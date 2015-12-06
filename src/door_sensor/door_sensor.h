@@ -22,7 +22,9 @@ typedef struct sensor_create_params
 	char *sensor_port_no;
 	char *sensor_area_id;
 	char *gateway_ip_address;
+	char *primary_gateway_ip_address;
 	char *gateway_port_no;
+	char *primary_gateway_port_no;
 	char *sensor_value_file_name;
 }sensor_create_params;
 
@@ -38,7 +40,7 @@ struct sensor_context
 {
 	sensor_create_params *sensor_params;
 	int interval;
-	int socket_fd;
+	int socket_fd[2];
 	network_thread_handle network_thread;
 	pthread_t set_value_thread;
 	int clock;

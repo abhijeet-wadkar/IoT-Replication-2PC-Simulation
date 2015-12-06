@@ -91,7 +91,7 @@ int create_sensor(sensor_handle *handle, sensor_create_params *params)
 	}
 
 	/* create connection to server */
-	return_value = create_socket(&sensor->socket_fd, params->gateway_ip_address, params->gateway_port_no);
+	return_value = create_socket(&sensor->socket_fd[0], params->gateway_ip_address, params->gateway_port_no);
 	if(E_SUCCESS != return_value)
 	{
 		LOG_ERROR(("ERROR: Connection to Server failed\n"));
@@ -100,13 +100,32 @@ int create_sensor(sensor_handle *handle, sensor_create_params *params)
 	}
 
 	/* add socket to network read thread */
-	return_value = add_socket(sensor->network_thread, sensor->socket_fd,  (void*)sensor, &read_callback);
+	return_value = add_socket(sensor->network_thread, sensor->socket_fd[0],  (void*)sensor, &read_callback);
 	if(E_SUCCESS != return_value)
 	{
 		LOG_ERROR(("ERROR: add_socket() filed\n"));
 		delete_sensor((sensor_handle)sensor);
 		return (return_value);
 	}
+
+	/* create connection to server */
+	return_value = create_socket(&sensor->socket_fd[1], params->primary_gateway_ip_address, params->primary_gateway_port_no);
+	if(E_SUCCESS != return_value)
+	{
+		LOG_ERROR(("ERROR: Connection to Server failed\n"));
+		delete_sensor((sensor_handle)sensor);
+		return (return_value);
+	}
+
+	/* add socket to network read thread */
+	return_value = add_socket(sensor->network_thread, sensor->socket_fd[1],  (void*)sensor, &read_callback);
+	if(E_SUCCESS != return_value)
+	{
+		LOG_ERROR(("ERROR: add_socket() filed\n"));
+		delete_sensor((sensor_handle)sensor);
+		return (return_value);
+	}
+
 
 	message msg;
 
@@ -117,7 +136,13 @@ int create_sensor(sensor_handle *handle, sensor_create_params *params)
 	msg.u.s.port_no = sensor->sensor_params->sensor_port_no;
 	msg.u.s.area_id = sensor->sensor_params->sensor_area_id;
 
-	return_value = write_message(sensor->socket_fd, sensor->logical_clock, &msg);
+	return_value = write_message(sensor->socket_fd[0], sensor->logical_clock, &msg);
+	if(E_SUCCESS != return_value)
+	{
+		LOG_ERROR(("ERROR: Error in registering sensor\n"));
+		return (E_FAILURE);
+	}
+	return_value = write_message(sensor->socket_fd[1], sensor->logical_clock, &msg);
 	if(E_SUCCESS != return_value)
 	{
 		LOG_ERROR(("ERROR: Error in registering sensor\n"));
@@ -151,7 +176,8 @@ void delete_sensor(sensor_handle handle)
 		}
 		if(sensor->socket_fd)
 		{
-			close_socket(sensor->socket_fd);
+			close_socket(sensor->socket_fd[0]);
+			close_socket(sensor->socket_fd[1]);
 		}
 		if(sensor->set_value_thread)
 		{
@@ -257,7 +283,7 @@ static void* read_callback(void *context)
 	peer *client = NULL;
 	int msg_logical_clock[CLOCK_SIZE];
 
-	return_value = read_message(sensor->socket_fd, msg_logical_clock, &msg);
+	return_value = read_message(sensor->socket_fd[sensor->active_gateway -1], msg_logical_clock, &msg);
 	if(return_value != E_SUCCESS)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
@@ -407,7 +433,7 @@ void* set_value_thread(void *context)
 		LOG_INFO(("timestamp: %lu, Door: %s\n", msg.timestamp, tokens[1]));
 		LOG_SCREEN(("timestamp: %lu, Door: %s\n", msg.timestamp, tokens[1]));
 
-		return_value = write_message(sensor->socket_fd, sensor->logical_clock, &msg);
+		return_value = write_message(sensor->socket_fd[sensor->active_gateway - 1], sensor->logical_clock, &msg);
 		if(E_SUCCESS != return_value)
 		{
 			LOG_ERROR(("ERROR: Error in sending sensor temperature value to gateway\n"));
