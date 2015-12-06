@@ -373,6 +373,10 @@ void* set_value_thread(void *context)
 	sensor = (sensor_context*)context;
 
 	msg.type = CURRENT_VALUE;
+	msg.u.s.type = KEY_CHAIN_SENSOR;
+	str_copy(&msg.u.s.ip_address, sensor->sensor_ip_address);
+	str_copy(&msg.u.s.port_no, sensor->sensor_port_number);
+	str_copy(&msg.u.s.area_id, sensor->active_gateway == 1? "1":"2");
 	while(sensor->run)
 	{
 		if(!(start <= sensor->clock && sensor->clock < end))
