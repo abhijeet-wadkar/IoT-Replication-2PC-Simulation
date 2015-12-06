@@ -288,6 +288,22 @@ static void* read_callback(void *context)
 		client->ip_address = msg.u.s.ip_address;
 		client->port_no = msg.u.s.port_no;
 
+		// check for the serving gateway
+		if(!(sensor->active_gateway))
+		{
+			if(*(msg.u.s.area_id) == '1')
+			{
+				// serving gateway is one
+				sensor->active_gateway = 1;
+			}
+			else
+			{
+				// only a sensor and a device are served by gateway 1
+				// other sensors will be served by gateway 2 or replica gateway
+				sensor->active_gateway = 2;
+			}
+		}
+		printf("INFO: Active gatewy = %d\n", sensor->active_gateway);
 		LOG_INFO(("INFO: New Peer %s, %s\n", client->ip_address, client->port_no));
 
 		/* create connection to server */

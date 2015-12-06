@@ -52,6 +52,7 @@ struct sensor_context
 	int recv_peer_count;
 	int send_peer_count;
 	int logical_clock[CLOCK_SIZE];
+	int active_gateway;
 	pthread_mutex_t mutex_lock;
 };
 

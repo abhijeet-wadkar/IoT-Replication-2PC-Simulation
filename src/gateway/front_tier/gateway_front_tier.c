@@ -160,8 +160,9 @@ void* message_handler(void *context)
 			}
 
 			// Check if all the components of the system are connected to the gateway
-			if (gateway->client_count == 6)
+			if (gateway->client_count == 5)
 			{
+				char load_balancing_factor = '0';
 				LOG_SCREEN(("All Devices registered successfully\n"));
 				for(int index=0; index < gateway->client_count; index++)
 				{
@@ -179,6 +180,8 @@ void* message_handler(void *context)
 								msg.u.s.type = gateway->clients[index1]->type;
 								msg.u.s.ip_address = gateway->clients[index1]->client_ip_address;
 								msg.u.s.port_no = gateway->clients[index1]->client_port_number;
+								load_balancing_factor++;
+								*(gateway->clients[index1]->area_id) = load_balancing_factor; 
 								msg.u.s.area_id = gateway->clients[index1]->area_id;
 								return_value = write_message(gateway->clients[index]->comm_socket_fd, gateway->logical_clock, &msg);
 								if (E_SUCCESS != return_value)
