@@ -243,7 +243,16 @@ int read_message(int socket_fd, int logical_clock[CLOCK_SIZE], message *msg)
 	else if(strcmp(tokens[1], "currValue")==0)
 	{
 		msg->type = CURRENT_VALUE;
-		msg->u.value = atoi(tokens[3]);
+		str_tokenize(tokens[3], "-", register_tokens, &count);
+		if(count !=5)
+		{
+			return (E_INVALID_MESSAGE);
+		}
+		msg->u.s.type = atoi(register_tokens[1]);
+		msg->u.s.type = get_device_type(register_tokens[1]);
+		str_copy(&msg->u.s.ip_address, register_tokens[2]);
+		str_copy(&msg->u.s.port_no, register_tokens[3]);
+		str_copy(&msg->u.s.area_id, register_tokens[4]);
 	}
 	else if(strcmp(tokens[1], "setInterval")==0)
 	{
@@ -317,6 +326,43 @@ int write_message(int socket_fd, int logical_clock[CLOCK_SIZE], message *msg)
 		}
 		break;
 	case CURRENT_VALUE:
+		sprintf(value_str, "%d-", msg->u.value);
+		strcat(buffer, value_str);
+
+		switch(msg->u.s.type)
+		{
+		case DOOR_SENSOR:
+			strcat(buffer, "door_sensor");
+			break;
+		case MOTION_SENSOR:
+			strcat(buffer, "motion_sensor");
+			break;
+		case KEY_CHAIN_SENSOR:
+			strcat(buffer, "key_chain_sensor");
+			break;
+		case SECURITY_DEVICE:
+			strcat(buffer, "security_device");
+			break;
+		case GATEWAY:
+			strcat(buffer, "gateway");
+			break;
+		case BACK_TIER_GATEWAY:
+			strcat(buffer, "back_tier_gateway");
+			break;
+		case REPLICA_GATEWAY:
+			strcat(buffer, "replica_gateway");
+			break;
+		default:
+			break;
+		}
+		strcat(buffer, "-");
+		strcat(buffer, msg->u.s.ip_address);
+		strcat(buffer, "-");
+		strcat(buffer, msg->u.s.port_no);
+		strcat(buffer, "-");
+		strcat(buffer, msg->u.s.area_id);
+
+		break;
 	case SET_INTERVAL:
 		sprintf(value_str, "%d", msg->u.value);
 		strcat(buffer, value_str);
