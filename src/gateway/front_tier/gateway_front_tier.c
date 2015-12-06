@@ -160,7 +160,7 @@ void* message_handler(void *context)
 			}
 
 			// Check if all the components of the system are connected to the gateway
-			if (gateway->client_count == 5)
+			if (gateway->client_count == 6)
 			{
 				char load_balancing_factor = '0';
 				LOG_SCREEN(("All Devices registered successfully\n"));
