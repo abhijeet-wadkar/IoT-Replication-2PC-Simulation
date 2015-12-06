@@ -388,8 +388,8 @@ void* set_value_thread(void *context)
 	}
 	sensor->value = value;
 	msg.u.s.type = DOOR_SENSOR;
-	str_copy(&msg.u.s.ip_address, sensor->sensor_ip_address);
-	str_copy(&msg.u.s.port_no, sensor->sensor_port_number);
+	str_copy(&msg.u.s.ip_address, sensor->sensor_params->sensor_ip_address);
+	str_copy(&msg.u.s.port_no, sensor->sensor_params->sensor_port_no);
 	str_copy(&msg.u.s.area_id, sensor->active_gateway == 1? "1":"2");
 	while(sensor->run)
 	{
