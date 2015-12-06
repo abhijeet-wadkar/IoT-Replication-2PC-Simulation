@@ -57,8 +57,17 @@ typedef struct gateway_context
 	pthread_cond_t cond_lock;
 	pthread_t message_handler_thread;
 	int primary_gateway_socket_fd;
+	char *message;
 	state two_pc_state;
 	int transaction_number;
+	int vote;
+	int vote_count;
+	int ack_count;
+	pthread_mutex_t transaction_lock;
+	pthread_cond_t transaction_cond_lock;
+
+	queue *transaction_queue;
+
 }gateway_context;
 
 int create_gateway(gateway_handle*, gateway_create_params*);

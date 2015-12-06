@@ -426,7 +426,6 @@ int read_msg_from_frontend(int socket_fd, char **string)
 	read_count=0;
 	while(1)
 	{
-		LOG_SCREEN(("Buffer: <<%s>>\n", buffer));
 		read_count += read(socket_fd, buffer+read_count, msg_size - read_count);
 		if(read_count==0)
 		{

@@ -51,6 +51,13 @@ typedef struct message_context
 	message *msg;
 }message_context;
 
+typedef struct transaction_context
+{
+	gateway_context *gateway;
+	gateway_client *client;
+	char *buffer;
+}transaction_context;
+
 void* accept_callback(void *context);
 void* primary_gateway_callback(void *context);
 void* read_callback(void*);
@@ -58,9 +65,9 @@ void* message_handler(void*);
 void print_state(gateway_context *gateway);
 
 int send_message_to_replicas(gateway_context *gateway, char *message);
-int vote_from_replicas(gateway_context *gateway);
-int receive_ack_from_replicas(gateway_context *gateway);
-int two_phase_commit(gateway_context *gateway, char* commit_message);
+int vote_from_replica(gateway_context *gateway, gateway_client *client);
+int receive_ack_from_replica(gateway_context *gateway, gateway_client *client);
+int two_phase_commit(gateway_context *gateway, gateway_client *client, char* commit_message);
 
 
 static void security_system_switch(gateway_context *gateway, int value)
@@ -81,6 +88,25 @@ static void security_system_switch(gateway_context *gateway, int value)
 		}
 	}
 }
+
+void* start_transaction(void *context)
+{
+	int return_value;
+	transaction_context *tc = (transaction_context*)context;
+
+	pthread_mutex_lock(&tc->gateway->transaction_lock);
+	while(tc->gateway->two_pc_state != NOTHING);
+	return_value = two_phase_commit(tc->gateway, tc->client, tc->buffer);
+	pthread_mutex_unlock(&tc->gateway->transaction_lock);
+
+	if(E_SUCCESS != return_value)
+	{
+		LOG_ERROR(("ERROR: TwoPhaseCommit Failed\n"));
+	}
+
+	return NULL;
+}
+
 void* message_handler(void *context)
 {
 	message_context *msg_context = NULL;
@@ -134,7 +160,7 @@ void* message_handler(void *context)
 			}
 
 			// Check if all the components of the system are connected to the gateway
-			if (gateway->client_count == 3)
+			if (gateway->client_count == 6)
 			{
 				LOG_SCREEN(("All Devices registered successfully\n"));
 				for(int index=0; index < gateway->client_count; index++)
@@ -255,11 +281,12 @@ void* message_handler(void *context)
 			{
 				if(gateway->clients[index]->type == REPLICA_GATEWAY)
 				{
-					return_value = two_phase_commit(gateway, buffer);
-					if(E_SUCCESS != return_value)
-					{
-						LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
-					}
+					pthread_t thread;
+					transaction_context *tc = (transaction_context*)malloc(sizeof(transaction_context));
+					tc->gateway = gateway;
+					tc->client = client;
+					str_copy(&tc->buffer, buffer);
+					pthread_create(&thread, NULL, start_transaction, (void*)tc);
 				}
 			}
 
@@ -339,11 +366,12 @@ void* message_handler(void *context)
 		}
 		if(strlen(buffer))
 		{
-			return_value = two_phase_commit(gateway, buffer);
-			if(E_SUCCESS != return_value)
-			{
-				LOG_ERROR(("ERROR: TwoPhaseCommit Failed\n"));
-			}
+			pthread_t thread;
+			transaction_context *tc = (transaction_context*)malloc(sizeof(transaction_context));
+			tc->gateway = gateway;
+			tc->client = client;
+			str_copy(&tc->buffer, buffer);
+			pthread_create(&thread, NULL, start_transaction, (void*)tc);
 
 			if(turn_device_on)
 			{
@@ -355,11 +383,13 @@ void* message_handler(void *context)
 									"127.0.0.1",
 									"1000");
 
-				return_value = two_phase_commit(gateway, buffer);
-				if(E_SUCCESS != return_value)
-				{
-					LOG_ERROR(("ERROR: TwoPhaseCommit Failed\n"));
-				}
+				pthread_t thread;
+				transaction_context *tc = (transaction_context*)malloc(sizeof(transaction_context));
+				tc->gateway = gateway;
+				tc->client = client;
+				str_copy(&tc->buffer, buffer);
+				pthread_create(&thread, NULL, start_transaction, (void*)tc);
+
 			}
 		}
 		pthread_mutex_unlock(&gateway->mutex_lock);
@@ -367,11 +397,25 @@ void* message_handler(void *context)
 	return (NULL);
 }
 
-int two_phase_commit(gateway_context *gateway, char* commit_message)
+int get_replica_count(gateway_context *gateway)
+{
+	int count = 0;
+	for(int index=0; index<gateway->client_count; index++)
+	{
+		if(gateway->clients[index]->type == REPLICA_GATEWAY)
+		{
+			count++;
+		}
+	}
+	return count;
+}
+
+int two_phase_commit(gateway_context *gateway, gateway_client *client, char* commit_message)
 {
 	int return_value = E_FAILURE;
 	int back_end_sock_fd = -1;
 	char buffer[200] = {'\0'};
+
 
 	for(int index=0; index<gateway->client_count; index++)
 	{
@@ -382,137 +426,150 @@ int two_phase_commit(gateway_context *gateway, char* commit_message)
 		}
 	}
 
-	gateway->two_pc_state = INIT;
-	if(gateway->two_pc_state == INIT)
+	if(gateway->two_pc_state == NOTHING)
 	{
+		gateway->two_pc_state = INIT;
 		LOG_SCREEN(("DEBUG: Currently in INIT state\n"));
 		gateway->transaction_number++;
-	}
 
-	if(gateway->two_pc_state == INIT)
-	{
+		gateway->vote = 1;
+		gateway->vote_count = 0;
+		gateway->ack_count = 0;
+		str_copy(&gateway->message, commit_message);
+
 		sprintf(buffer, "Prepare:%d:%s", gateway->transaction_number, commit_message);
 		LOG_SCREEN(("DEBUG: Prepare message sent\n"));
 		gateway->two_pc_state = READY;
-		LOG_SCREEN(("DEBUG: Message sent: %s", buffer));
 
 		return_value = send_message_to_replicas(gateway, buffer);
 		if(E_SUCCESS != return_value)
 		{
 			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 		}
+
+		LOG_SCREEN(("INFO: Moving to waiting state\n"));
+		gateway->two_pc_state = WAIT;
+		return E_SUCCESS;
 	}
 
-	LOG_SCREEN(("INFO: Moving to waiting state\n"));
-
-	if(vote_from_replicas(gateway))
+	if(gateway->two_pc_state == WAIT)
 	{
-		/* global commit */
-		sprintf(buffer, "Commit:%d:Empty", gateway->transaction_number);
-		return_value = send_message_to_replicas(gateway, buffer);
-		if(E_SUCCESS != return_value)
+		int vote = vote_from_replica(gateway, client);
+		gateway->vote_count++;
+		if(vote == 1)
 		{
-			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+			gateway->vote = vote;
 		}
+		if(get_replica_count(gateway) != gateway->vote_count)
+		{
+			return E_SUCCESS;
+		}
+		if(gateway->vote == 1)
+		{
+			/* global commit */
+			sprintf(buffer, "Commit:%d:Empty", gateway->transaction_number);
+			return_value = send_message_to_replicas(gateway, buffer);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+			}
+			gateway->two_pc_state = COMMIT;
+			LOG_SCREEN(("INFO: Global commit sent\n"));
 
-		LOG_SCREEN(("INFO: Global commit sent\n"));
+			return_value = send_msg_to_backend(back_end_sock_fd, gateway->message);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+			}
+		}
+		else
+		{
+			/* global abort */
+			sprintf(buffer, "Abort:%d:Empty", gateway->transaction_number);
+			return_value = send_message_to_replicas(gateway, buffer);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to replicas\n"));
+			}
 
-		if(receive_ack_from_replicas(gateway) == 0)
+			LOG_SCREEN(("INFO: Global abort sent\n"));
+			gateway->two_pc_state = ABORT;
+
+		}
+	}
+	if(gateway->two_pc_state == COMMIT
+			|| gateway->two_pc_state == ABORT)
+	{
+		if(receive_ack_from_replica(gateway, client) == 0)
 		{
 			LOG_ERROR(("ERROR: Acknowledge not received from all replicas\n"));
+			return (E_SUCCESS);
 		}
-
-		return_value = send_msg_to_backend(back_end_sock_fd, commit_message);
-		if(E_SUCCESS != return_value)
+		gateway->ack_count++;
+		if(get_replica_count(gateway) != gateway->ack_count)
 		{
-			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+			return E_SUCCESS;
 		}
 
 		LOG_ERROR(("Transaction complete\n"));
-	}
-	else
-	{
-		/* global abort */
-		sprintf(buffer, "Abort:%d:Empty", gateway->transaction_number);
-		return_value = send_message_to_replicas(gateway, buffer);
-		if(E_SUCCESS != return_value)
-		{
-			LOG_ERROR(("ERROR: Unable to send message to replicas\n"));
-		}
-
-		LOG_SCREEN(("INFO: Global abort sent\n"));
-
-		if(receive_ack_from_replicas(gateway) == 0)
-		{
-			LOG_ERROR(("ERROR: Acknowledge not received from all replicas\n"));
-		}
-
-		LOG_ERROR(("Transaction complete\n"));
+		gateway->two_pc_state = NOTHING;
 	}
 	return (E_SUCCESS);
 }
 
-int receive_ack_from_replicas(gateway_context *gateway)
+int receive_ack_from_replica(gateway_context *gateway, gateway_client *client)
 {
 	int return_value;
 	char *tokens[10] = {NULL};
 	int count=0, error = 1;
 	char *message = NULL;
-	for(int index=0; index<gateway->client_count; index++)
+
+	return_value = read_msg_from_frontend(client->comm_socket_fd, &message);
+	if(E_SUCCESS != return_value)
 	{
-		if(gateway->clients[index]->type == REPLICA_GATEWAY)
-		{
-			return_value = read_msg_from_frontend(gateway->clients[index]->comm_socket_fd, &message);
-			if(E_SUCCESS != return_value)
-			{
-				LOG_ERROR(("ERROR: Unable to send message to replicas"));
-				break;
-			}
-			str_tokenize(message, ":", tokens, &count);
-			if(count != 3)
-			{
-				LOG_ERROR(("ERROR: Wrong Message Received\n"));
-				error = 0;
-			}
-			if(strcmp(tokens[0], "Ack") != 0
-					|| atoi(tokens[1]) != gateway->transaction_number)
-			{
-				error = 0;
-			}
-		}
+		LOG_ERROR(("ERROR: Unable to send message to replica"));
+		return 0;
 	}
+	str_tokenize(message, ":", tokens, &count);
+	if(count != 3)
+	{
+		LOG_ERROR(("ERROR: Wrong Message Received\n"));
+		error = 0;
+	}
+	if(strcmp(tokens[0], "Ack") != 0
+			|| atoi(tokens[1]) != gateway->transaction_number)
+	{
+		error = 0;
+	}
+
 	return error;
 }
 
-int vote_from_replicas(gateway_context *gateway)
+int vote_from_replica(gateway_context *gateway, gateway_client *client)
 {
 	int return_value;
 	char *tokens[10] = {NULL};
 	int count=0, vote = 1;
 	char* message = NULL;
-	for(int index=0; index<gateway->client_count; index++)
+
+	return_value = read_msg_from_frontend(client->comm_socket_fd, &message);
+	if(E_SUCCESS != return_value)
 	{
-		if(gateway->clients[index]->type == REPLICA_GATEWAY)
-		{
-			return_value = read_msg_from_frontend(gateway->clients[index]->comm_socket_fd, &message);
-			if(E_SUCCESS != return_value)
-			{
-				LOG_ERROR(("ERROR: Unable to send message to replica's"));
-				break;
-			}
-			str_tokenize(message, ":", tokens, &count);
-			if(count != 3)
-			{
-				LOG_ERROR(("ERROR: Wrong Message Received\n"));
-				vote = 0;
-			}
-			if(strcmp(tokens[0], "Vote_Commit") != 0
-					|| atoi(tokens[1]) != gateway->transaction_number)
-			{
-				vote = 0;
-			}
-		}
+		LOG_ERROR(("ERROR: Unable to send message to replica's"));
+		return 0;
 	}
+	str_tokenize(message, ":", tokens, &count);
+	if(count != 3)
+	{
+		LOG_ERROR(("ERROR: Wrong Message Received\n"));
+		vote = 0;
+	}
+	if(strcmp(tokens[0], "Vote_Commit") != 0
+			|| atoi(tokens[1]) != gateway->transaction_number)
+	{
+		vote = 0;
+	}
+
 	return vote;
 }
 
@@ -597,7 +654,7 @@ int create_gateway(gateway_handle* handle, gateway_create_params *params)
 	gateway->logical_clock[3] = 0;
 
 	gateway->primary_flag = 0;
-	gateway->two_pc_state = INIT;
+	gateway->two_pc_state = NOTHING;
 	gateway->transaction_number = 0;
 
 	memset(gateway->buffered_messages, 0, 100*sizeof(void*));
@@ -605,6 +662,8 @@ int create_gateway(gateway_handle* handle, gateway_create_params *params)
 
 	pthread_mutex_init(&gateway->mutex_lock, NULL);
 	pthread_cond_init(&gateway->cond_lock, NULL);
+	pthread_mutex_init(&gateway->transaction_lock, NULL);
+	pthread_cond_init(&gateway->transaction_cond_lock, NULL);
 
 	/* create network read thread */
 	return_value = create_network_thread(&gateway->network_thread, params->gateway_ip_address);
@@ -722,10 +781,12 @@ void* primary_gateway_callback(void *context)
 	int count;
 	char buffer[100] = {'\0'};
 
-	if(gateway->two_pc_state == INIT)
+	if(gateway->two_pc_state == NOTHING)
 	{
 		LOG_SCREEN(("DEBUG: Currently in INIT state\n"));
+		gateway->two_pc_state = INIT;
 		gateway->transaction_number++;
+
 	}
 
 	/* 2 phase receiver protocol */
@@ -737,8 +798,6 @@ void* primary_gateway_callback(void *context)
 		exit(0);
 		return (NULL);
 	}
-
-	LOG_SCREEN(("DEBUG: Message received: %s\n", string));
 
 	str_tokenize(string, ":", tokens, &count);
 	if(count != 3)
@@ -761,9 +820,9 @@ void* primary_gateway_callback(void *context)
 		{
 			LOG_SCREEN(("DEBUG: Prepare message received\n"));
 			gateway->two_pc_state = READY;
+			str_copy(&gateway->message, tokens[2]);
 			LOG_SCREEN(("DEBUG: Commit_vote_sent\n"));
 			sprintf(buffer, "Vote_Commit:%d:Empty", atoi(tokens[1]));
-			sleep(1);
 			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, buffer);
 			if(E_SUCCESS != return_value)
 			{
@@ -806,7 +865,7 @@ void* primary_gateway_callback(void *context)
 			{
 				if(gateway->clients[index]->type == BACK_TIER_GATEWAY)
 				{
-					return_value = send_msg_to_backend(gateway->clients[index]->comm_socket_fd, tokens[2]);
+					return_value = send_msg_to_backend(gateway->clients[index]->comm_socket_fd, gateway->message);
 					if(E_SUCCESS != return_value)
 					{
 						LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
@@ -822,7 +881,7 @@ void* primary_gateway_callback(void *context)
 			}
 			LOG_SCREEN(("DEBUG: Acknowledge for global commit sent\n"));
 
-			gateway->two_pc_state = INIT;
+			gateway->two_pc_state = NOTHING;
 		}
 		else if(strcmp(tokens[0], "Abort") == 0)
 		{
@@ -837,7 +896,7 @@ void* primary_gateway_callback(void *context)
 			}
 			LOG_SCREEN(("DEBUG: Acknowledge for global commit sent\n"));
 
-			gateway->two_pc_state = INIT;
+			gateway->two_pc_state = NOTHING;
 		}
 		else
 		{
@@ -864,6 +923,7 @@ void* accept_callback(void *context)
 		return (NULL);
 	}
 
+	client->type = UNKNOWN;
 	client->gateway = context;
 	client->comm_socket_fd = accept(gateway->server_socket_fd, (struct sockaddr*)NULL, NULL);
 	if(client->comm_socket_fd < 0)
@@ -902,6 +962,12 @@ void* read_callback(void *context)
 	int msg_logical_clock[CLOCK_SIZE];
 	int buffer_message;
 	int signal_message_handler;
+
+	if(client->type == REPLICA_GATEWAY)
+	{
+		two_phase_commit(gateway, client, "");
+		return (NULL);
+	}
 
 	msg_context = (message_context*)malloc(sizeof(message_context));
 	if(!msg_context)
@@ -967,53 +1033,18 @@ void* read_callback(void *context)
 	buffer_message = 0;
 	signal_message_handler = 0;
 	//adjust_clock(gateway->logical_clock, msg_logical_clock);
-	if(client->type == MOTION_SENSOR)
+	if(check_devlivery(gateway->logical_clock, msg_logical_clock))
 	{
-		if(check_devlivery(gateway->logical_clock, msg_logical_clock))
-		{
-			/* correct order message */
-			/* adjust clock */
-			add_queue(&gateway->msg_queue, msg_context);
-			adjust_clock(gateway->logical_clock, msg_logical_clock);
-			signal_message_handler = 1;
-		}
-		else
-		{
-			/* buffer message */
-			buffer_message = 1;
-		}
+		/* correct order message */
+		/* adjust clock */
+		add_queue(&gateway->msg_queue, msg_context);
+		adjust_clock(gateway->logical_clock, msg_logical_clock);
+		signal_message_handler = 1;
 	}
-	else if(client->type == DOOR_SENSOR)
+	else
 	{
-		if(check_devlivery(gateway->logical_clock, msg_logical_clock))
-		{
-			/* correct order message */
-			/* adjust clock */
-			add_queue(&gateway->msg_queue, msg_context);
-			adjust_clock(gateway->logical_clock, msg_logical_clock);
-			signal_message_handler = 1;
-		}
-		else
-		{
-			/* buffer message */
-			buffer_message = 1;
-		}
-	}
-	else if(client->type == KEY_CHAIN_SENSOR)
-	{
-		if(check_devlivery(gateway->logical_clock, msg_logical_clock))
-		{
-			/* correct order message */
-			/* adjust clock */
-			add_queue(&gateway->msg_queue, msg_context);
-			adjust_clock(gateway->logical_clock, msg_logical_clock);
-			signal_message_handler = 1;
-		}
-		else
-		{
-			/* buffer message */
-			buffer_message = 1;
-		}
+		/* buffer message */
+		buffer_message = 1;
 	}
 
 	if(buffer_message)
