@@ -116,6 +116,10 @@ device_type get_device_type(char *str)
 	{
 		return (GATEWAY);
 	}
+	else if(strcmp(str, "replica_gateway")==0)
+	{
+		return REPLICA_GATEWAY;
+	}
 	return (UNKNOWN);
 }
 
@@ -338,6 +342,9 @@ int write_message(int socket_fd, int logical_clock[CLOCK_SIZE], message *msg)
 		case BACK_TIER_GATEWAY:
 			strcat(buffer, "back_tier_gateway");
 			break;
+		case REPLICA_GATEWAY:
+			strcat(buffer, "replica_gateway");
+			break;
 		default:
 			break;
 		}
@@ -419,6 +426,7 @@ int read_msg_from_frontend(int socket_fd, char **string)
 	read_count=0;
 	while(1)
 	{
+		LOG_SCREEN(("Buffer: <<%s>>\n", buffer));
 		read_count += read(socket_fd, buffer+read_count, msg_size - read_count);
 		if(read_count==0)
 		{

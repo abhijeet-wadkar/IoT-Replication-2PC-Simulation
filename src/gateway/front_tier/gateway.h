@@ -14,6 +14,7 @@
 #include "network_read_thread.h"
 #include "message.h"
 #include "queue.h"
+#include "two_phase_commit.h"
 
 typedef void* gateway_handle;
 
@@ -36,10 +37,13 @@ typedef struct gateway_create_params
 {
 	char *gateway_ip_address;
 	char *gateway_port_no;
+	char *primary_gateway_ip_address;
+	char *primary_gateway_port_no;
 }gateway_create_params;
 
 typedef struct gateway_context
 {
+	int primary_flag;
 	gateway_create_params *gateway_params;
 	int server_socket_fd;
 	network_thread_handle network_thread;
@@ -52,6 +56,9 @@ typedef struct gateway_context
 	pthread_mutex_t mutex_lock;
 	pthread_cond_t cond_lock;
 	pthread_t message_handler_thread;
+	int primary_gateway_socket_fd;
+	state two_pc_state;
+	int transaction_number;
 }gateway_context;
 
 int create_gateway(gateway_handle*, gateway_create_params*);

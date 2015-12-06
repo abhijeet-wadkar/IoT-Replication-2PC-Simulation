@@ -29,6 +29,7 @@ typedef enum device_type
 	SECURITY_DEVICE,
 	GATEWAY,
 	BACK_TIER_GATEWAY,
+	REPLICA_GATEWAY,
 	UNKNOWN
 }device_type;
 

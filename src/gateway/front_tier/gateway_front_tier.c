@@ -5,6 +5,7 @@
  *      Author: Abhijeet Wadkar, Devendra Dahiphale
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -18,6 +19,7 @@
 #include "network_functions.h"
 #include "network_read_thread.h"
 #include "logical_clock_utils.h"
+#include "string_helper_functions.h"
 
 char* device_string[] = {
 		"door_sensor",
@@ -50,9 +52,15 @@ typedef struct message_context
 }message_context;
 
 void* accept_callback(void *context);
+void* primary_gateway_callback(void *context);
 void* read_callback(void*);
 void* message_handler(void*);
 void print_state(gateway_context *gateway);
+
+int send_message_to_replicas(gateway_context *gateway, char *message);
+int vote_from_replicas(gateway_context *gateway);
+int receive_ack_from_replicas(gateway_context *gateway);
+int two_phase_commit(gateway_context *gateway, char* commit_message);
 
 
 static void security_system_switch(gateway_context *gateway, int value)
@@ -126,18 +134,19 @@ void* message_handler(void *context)
 			}
 
 			// Check if all the components of the system are connected to the gateway
-			if (gateway->client_count == 5)
+			if (gateway->client_count == 3)
 			{
 				LOG_SCREEN(("All Devices registered successfully\n"));
 				for(int index=0; index < gateway->client_count; index++)
 				{
-					if(gateway->clients[index]->type != BACK_TIER_GATEWAY && gateway->clients[index]->type != SECURITY_DEVICE)
+					if(gateway->clients[index]->type != BACK_TIER_GATEWAY && gateway->clients[index]->type != SECURITY_DEVICE && gateway->clients[index]->type != REPLICA_GATEWAY)
 					{
 						for(int index1=0; index1<gateway->client_count; index1++)
 						{
 							if(0 != strcmp(gateway->clients[index]->client_port_number, gateway->clients[index1]->client_port_number)
 									&& gateway->clients[index1]->type != BACK_TIER_GATEWAY
-									&& gateway->clients[index1]->type != SECURITY_DEVICE)
+									&& gateway->clients[index1]->type != SECURITY_DEVICE
+									&& gateway->clients[index1]->type != REPLICA_GATEWAY)
 							{
 								message msg;
 								msg.type = REGISTER;
@@ -229,7 +238,7 @@ void* message_handler(void *context)
 			print_state(client->gateway);
 
 
-			for(int index=0; index<gateway->client_count; index++)
+			/*for(int index=0; index<gateway->client_count; index++)
 			{
 				if(gateway->clients[index]->type == BACK_TIER_GATEWAY)
 				{
@@ -239,7 +248,21 @@ void* message_handler(void *context)
 						LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 					}
 				}
+			}*/
+
+			/* starting the 2Phase commit protocol */
+			for(int index=0; index<gateway->client_count; index++)
+			{
+				if(gateway->clients[index]->type == REPLICA_GATEWAY)
+				{
+					return_value = two_phase_commit(gateway, buffer);
+					if(E_SUCCESS != return_value)
+					{
+						LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+					}
+				}
 			}
+
 			break;
 		case CURRENT_STATE:
 			LOG_DEBUG(("DEBUG: Current state message is received\n"));
@@ -261,10 +284,10 @@ void* message_handler(void *context)
 					if(gateway->door_state == 1 && gateway->key_state == 1)
 					{
 						turn_device_on = 0;
-						strcpy(buffer, "User Entererd - Turning off Security System\n");
+						strcpy(buffer, "User Entered - Turning off Security System\n");
 						security_system_switch(gateway, 0);
-						LOG_INFO(("INFO: User Entererd - Turning off Security System\n"));
-						LOG_SCREEN(("INFO: User Entererd - Turning off Security System\n"));
+						LOG_INFO(("INFO: User Entered - Turning off Security System\n"));
+						LOG_SCREEN(("INFO: User Entered - Turning off Security System\n"));
 					}
 					if(gateway->key_state == 0)
 					{
@@ -316,36 +339,203 @@ void* message_handler(void *context)
 		}
 		if(strlen(buffer))
 		{
-			for(int index=0; index<gateway->client_count; index++)
+			return_value = two_phase_commit(gateway, buffer);
+			if(E_SUCCESS != return_value)
 			{
-				if(gateway->clients[index]->type == BACK_TIER_GATEWAY)
+				LOG_ERROR(("ERROR: TwoPhaseCommit Failed\n"));
+			}
+
+			if(turn_device_on)
+			{
+				strcpy(buffer, "");
+				sprintf(buffer, "4----%-20s----%-10s----%-10lu----%-10s----%-10s\n",
+									device_string[SECURITY_DEVICE],
+									value_string[turn_device_on],
+									msg->timestamp,
+									"127.0.0.1",
+									"1000");
+
+				return_value = two_phase_commit(gateway, buffer);
+				if(E_SUCCESS != return_value)
 				{
-					return_value = send_msg_to_backend(gateway->clients[index]->comm_socket_fd, buffer);
-					if(E_SUCCESS != return_value)
-					{
-						LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
-					}
-					if(turn_device_on)
-					{
-						strcpy(buffer, "");
-						sprintf(buffer, "4----%-20s----%-10s----%-10lu----%-10s----%-10s\n",
-											device_string[SECURITY_DEVICE],
-											value_string[turn_device_on],
-											msg->timestamp,
-											gateway->clients[index]->client_ip_address,
-											gateway->clients[index]->client_port_number);
-						return_value = send_msg_to_backend(gateway->clients[index]->comm_socket_fd, buffer);
-						if(E_SUCCESS != return_value)
-						{
-							LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
-						}
-					}
+					LOG_ERROR(("ERROR: TwoPhaseCommit Failed\n"));
 				}
 			}
 		}
 		pthread_mutex_unlock(&gateway->mutex_lock);
 	}
 	return (NULL);
+}
+
+int two_phase_commit(gateway_context *gateway, char* commit_message)
+{
+	int return_value = E_FAILURE;
+	int back_end_sock_fd = -1;
+	char buffer[200] = {'\0'};
+
+	for(int index=0; index<gateway->client_count; index++)
+	{
+		if(gateway->clients[index]->type == BACK_TIER_GATEWAY)
+		{
+			back_end_sock_fd = gateway->clients[index]->comm_socket_fd;
+			break;
+		}
+	}
+
+	gateway->two_pc_state = INIT;
+	if(gateway->two_pc_state == INIT)
+	{
+		LOG_SCREEN(("DEBUG: Currently in INIT state\n"));
+		gateway->transaction_number++;
+	}
+
+	if(gateway->two_pc_state == INIT)
+	{
+		sprintf(buffer, "Prepare:%d:%s", gateway->transaction_number, commit_message);
+		LOG_SCREEN(("DEBUG: Prepare message sent\n"));
+		gateway->two_pc_state = READY;
+		LOG_SCREEN(("DEBUG: Message sent: %s", buffer));
+
+		return_value = send_message_to_replicas(gateway, buffer);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+		}
+	}
+
+	LOG_SCREEN(("INFO: Moving to waiting state\n"));
+
+	if(vote_from_replicas(gateway))
+	{
+		/* global commit */
+		sprintf(buffer, "Commit:%d:Empty", gateway->transaction_number);
+		return_value = send_message_to_replicas(gateway, buffer);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+		}
+
+		LOG_SCREEN(("INFO: Global commit sent\n"));
+
+		if(receive_ack_from_replicas(gateway) == 0)
+		{
+			LOG_ERROR(("ERROR: Acknowledge not received from all replicas\n"));
+		}
+
+		return_value = send_msg_to_backend(back_end_sock_fd, commit_message);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+		}
+
+		LOG_ERROR(("Transaction complete\n"));
+	}
+	else
+	{
+		/* global abort */
+		sprintf(buffer, "Abort:%d:Empty", gateway->transaction_number);
+		return_value = send_message_to_replicas(gateway, buffer);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: Unable to send message to replicas\n"));
+		}
+
+		LOG_SCREEN(("INFO: Global abort sent\n"));
+
+		if(receive_ack_from_replicas(gateway) == 0)
+		{
+			LOG_ERROR(("ERROR: Acknowledge not received from all replicas\n"));
+		}
+
+		LOG_ERROR(("Transaction complete\n"));
+	}
+	return (E_SUCCESS);
+}
+
+int receive_ack_from_replicas(gateway_context *gateway)
+{
+	int return_value;
+	char *tokens[10] = {NULL};
+	int count=0, error = 1;
+	char *message = NULL;
+	for(int index=0; index<gateway->client_count; index++)
+	{
+		if(gateway->clients[index]->type == REPLICA_GATEWAY)
+		{
+			return_value = read_msg_from_frontend(gateway->clients[index]->comm_socket_fd, &message);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to replicas"));
+				break;
+			}
+			str_tokenize(message, ":", tokens, &count);
+			if(count != 3)
+			{
+				LOG_ERROR(("ERROR: Wrong Message Received\n"));
+				error = 0;
+			}
+			if(strcmp(tokens[0], "Ack") != 0
+					|| atoi(tokens[1]) != gateway->transaction_number)
+			{
+				error = 0;
+			}
+		}
+	}
+	return error;
+}
+
+int vote_from_replicas(gateway_context *gateway)
+{
+	int return_value;
+	char *tokens[10] = {NULL};
+	int count=0, vote = 1;
+	char* message = NULL;
+	for(int index=0; index<gateway->client_count; index++)
+	{
+		if(gateway->clients[index]->type == REPLICA_GATEWAY)
+		{
+			return_value = read_msg_from_frontend(gateway->clients[index]->comm_socket_fd, &message);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to replica's"));
+				break;
+			}
+			str_tokenize(message, ":", tokens, &count);
+			if(count != 3)
+			{
+				LOG_ERROR(("ERROR: Wrong Message Received\n"));
+				vote = 0;
+			}
+			if(strcmp(tokens[0], "Vote_Commit") != 0
+					|| atoi(tokens[1]) != gateway->transaction_number)
+			{
+				vote = 0;
+			}
+		}
+	}
+	return vote;
+}
+
+
+int send_message_to_replicas(gateway_context *gateway, char *message)
+{
+	int return_value;
+	int index;
+	for(index=0; index<gateway->client_count; index++)
+	{
+		if(gateway->clients[index]->type == REPLICA_GATEWAY)
+		{
+			return_value = send_msg_to_backend(gateway->clients[index]->comm_socket_fd, message);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to replica's"));
+				break;
+			}
+		}
+	}
+	if(index != (gateway->client_count))
+		return (E_FAILURE);
+	return (E_SUCCESS);
 }
 
 void print_state(gateway_context *gateway)
@@ -406,6 +596,10 @@ int create_gateway(gateway_handle* handle, gateway_create_params *params)
 	gateway->logical_clock[2] = 0;
 	gateway->logical_clock[3] = 0;
 
+	gateway->primary_flag = 0;
+	gateway->two_pc_state = INIT;
+	gateway->transaction_number = 0;
+
 	memset(gateway->buffered_messages, 0, 100*sizeof(void*));
 	gateway->msg_queue = NULL;
 
@@ -437,6 +631,48 @@ int create_gateway(gateway_handle* handle, gateway_create_params *params)
 		LOG_ERROR(("ERROR: add_socket() failed\n"));
 		delete_gateway((gateway_handle)gateway);
 		return (return_value);
+	}
+
+	if(strcmp(params->primary_gateway_ip_address, params->gateway_ip_address) == 0
+				&& strcmp(params->primary_gateway_port_no, params->gateway_port_no)==0)
+	{
+		gateway->primary_flag = 1;
+	}
+	else
+	{
+		/*establish connection to primary gateway */
+		return_value = create_socket(&gateway->primary_gateway_socket_fd, params->primary_gateway_ip_address, params->primary_gateway_port_no);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: Error in connecting to primary gateway\n"));
+			delete_gateway((gateway_handle)gateway);
+			return (return_value);
+		}
+
+		/* add socket to network read thread */
+		return_value = add_socket(gateway->network_thread, gateway->primary_gateway_socket_fd,  (void*)gateway, &primary_gateway_callback);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: add_socket() failed\n"));
+			delete_gateway((gateway_handle)gateway);
+			return (return_value);
+		}
+
+		message msg;
+		msg.type = REGISTER;
+		msg.u.s.type = REPLICA_GATEWAY;
+		msg.u.s.ip_address = params->gateway_ip_address;
+		msg.u.s.port_no = params->gateway_port_no;
+		msg.u.s.area_id = "1";
+
+		return_value = write_message(gateway->primary_gateway_socket_fd, gateway->logical_clock, &msg);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: write_message to primary gateway failed\n"));
+			delete_gateway((gateway_handle)gateway);
+			return (return_value);
+		}
+
 	}
 
 	pthread_create(&gateway->message_handler_thread, NULL, message_handler, gateway);
@@ -475,6 +711,142 @@ void delete_gateway(gateway_handle handle)
 
 		free(gateway);
 	}
+}
+
+void* primary_gateway_callback(void *context)
+{
+	int return_value;
+	gateway_context *gateway = (gateway_context*)context;
+	char* string = NULL;
+	char *tokens[10];
+	int count;
+	char buffer[100] = {'\0'};
+
+	if(gateway->two_pc_state == INIT)
+	{
+		LOG_SCREEN(("DEBUG: Currently in INIT state\n"));
+		gateway->transaction_number++;
+	}
+
+	/* 2 phase receiver protocol */
+	return_value = read_msg_from_frontend(gateway->primary_gateway_socket_fd, &string);
+	if(E_SUCCESS != return_value)
+	{
+		LOG_ERROR(("ERROR: Unable to read the data from socket\n"));
+		LOG_ERROR(("ERROR: Connection closed by peer...\n"));
+		exit(0);
+		return (NULL);
+	}
+
+	LOG_SCREEN(("DEBUG: Message received: %s\n", string));
+
+	str_tokenize(string, ":", tokens, &count);
+	if(count != 3)
+	{
+		LOG_ERROR(("ERROR: Unknown message received\n"));
+		return (NULL);
+	}
+
+	if(atoi(tokens[1]) != gateway->transaction_number)
+	{
+		LOG_ERROR(("ERROR: Processing other transaction: %d and got %d\n",
+				gateway->transaction_number,
+				atoi(tokens[1])));
+		return (NULL);
+	}
+
+	if(gateway->two_pc_state == INIT)
+	{
+		if(strcmp(tokens[0], "Prepare") == 0)
+		{
+			LOG_SCREEN(("DEBUG: Prepare message received\n"));
+			gateway->two_pc_state = READY;
+			LOG_SCREEN(("DEBUG: Commit_vote_sent\n"));
+			sprintf(buffer, "Vote_Commit:%d:Empty", atoi(tokens[1]));
+			sleep(1);
+			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, buffer);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+			}
+			return (NULL);
+
+		}
+		else if(strcmp(tokens[0], "Commit") == 0)
+		{
+			LOG_ERROR(("ERROR: Commit Received and in INIT state\n"));
+			LOG_SCREEN(("DEBUG: Abort_vote_sent\n"));
+			sprintf(buffer, "Abort_Commit:%d:Empty", atoi(tokens[1]));
+			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, buffer);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+			}
+			return (NULL);
+		}
+		else
+		{
+			LOG_ERROR(("ERROR: Unknown message received\n"));
+			return (NULL);
+		}
+	}
+
+	if(gateway->two_pc_state == READY)
+	{
+		if(strcmp(tokens[0], "Prepare") == 0)
+		{
+			LOG_ERROR(("ERROR: Prepare message received and in READY state\n"));
+		}
+		else if(strcmp(tokens[0], "Commit") == 0)
+		{
+			LOG_SCREEN(("DEBUG: Global commit message received\n"));
+			gateway->two_pc_state = COMMIT;
+			/* send to persistent storage */
+			for(int index=0; index<gateway->client_count; index++)
+			{
+				if(gateway->clients[index]->type == BACK_TIER_GATEWAY)
+				{
+					return_value = send_msg_to_backend(gateway->clients[index]->comm_socket_fd, tokens[2]);
+					if(E_SUCCESS != return_value)
+					{
+						LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+					}
+				}
+			}
+
+			sprintf(buffer, "Ack:%d:Empty", atoi(tokens[1]));
+			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, buffer);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+			}
+			LOG_SCREEN(("DEBUG: Acknowledge for global commit sent\n"));
+
+			gateway->two_pc_state = INIT;
+		}
+		else if(strcmp(tokens[0], "Abort") == 0)
+		{
+			LOG_SCREEN(("DEBUG: Global abort message received\n"));
+			gateway->two_pc_state = ABORT;
+
+			sprintf(buffer, "Ack:%d:Empty", atoi(tokens[1]));
+			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, buffer);
+			if(E_SUCCESS != return_value)
+			{
+				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+			}
+			LOG_SCREEN(("DEBUG: Acknowledge for global commit sent\n"));
+
+			gateway->two_pc_state = INIT;
+		}
+		else
+		{
+			LOG_ERROR(("ERROR: Unknown message received\n"));
+			return (NULL);
+		}
+
+	}
+	return (NULL);
 }
 
 void* accept_callback(void *context)
@@ -646,6 +1018,7 @@ void* read_callback(void *context)
 
 	if(buffer_message)
 	{
+		LOG_SCREEN(("DEBUG: Message buffered\n"));
 		for(int index=0; index<100; index++)
 		{
 			if(gateway->buffered_messages[index] == NULL)

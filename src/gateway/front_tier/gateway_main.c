@@ -75,10 +75,39 @@ int main(int argc, char*argv[])
 	LOG_DEBUG(("IP Address: %s\n", gateway_device.gateway_ip_address));
 	LOG_DEBUG(("Port No: %s\n", gateway_device.gateway_port_no));
 
+
+	/* Read line */
+	if(fgets(line, LINE_MAX, conf_file_pointer) == NULL)
+	{
+		LOG_DEBUG(("DEBUG: Cleanup and return\n"));
+		fclose(conf_file_pointer);
+		LOG_ERROR(("ERROR: Wrong configuration file\n"));
+		return (0);
+	}
+	str_tokenize(line, ":\n\r", tokens, &count);
+	if(count<3)
+	{
+		LOG_ERROR(("Wrong configuration file\n"));
+		fclose(conf_file_pointer);
+		return (0);
+	}
+
+	if(strcmp(tokens[0], "PrimaryGateway")!=0)
+	{
+		LOG_ERROR(("ERROR: Wrong configuration file\n"));
+		fclose(conf_file_pointer);
+		return (0);
+	}
+
+	str_copy(&gateway_device.primary_gateway_ip_address, tokens[1]);
+	str_copy(&gateway_device.primary_gateway_port_no, tokens[2]);
+	LOG_SCREEN(("Primary Gateway IP Address: %s\n", gateway_device.primary_gateway_ip_address));
+	LOG_SCREEN(("Primary Gateway Port No: %s\n", gateway_device.primary_gateway_port_no));
+
 	return_value = create_gateway(&gateway, &gateway_device);
 	if(E_SUCCESS != return_value)
 	{
-		LOG_ERROR(("ERROR: Unable to create gateway\n"));
+		LOG_SCREEN(("ERROR: Unable to create gateway\n"));
 		free(gateway_device.gateway_ip_address);
 		free(gateway_device.gateway_port_no);
 		fclose(conf_file_pointer);

@@ -1,5 +1,6 @@
 cd obj/gateway_front_tier/
-gnome-terminal -e "./gateway_front_tier ../../SampleConfigurationFiles/SampleGatewayConfigurationFile.txt ../../output/SampleGatewayFrontTierOutputFile.txt"
+gnome-terminal -e "./gateway_front_tier ../../SampleConfigurationFiles/SampleGatewayConfigurationFile1.txt ../../output/SampleGatewayFrontTierOutputFile1.txt"
+gnome-terminal -e "./gateway_front_tier ../../SampleConfigurationFiles/SampleGatewayConfigurationFile2.txt ../../output/SampleGatewayFrontTierOutputFile2.txt"
 cd ../gateway_back_tier/
 gnome-terminal -e "./gateway_back_tier ../../SampleConfigurationFiles/SampleGatewayConfigurationFile.txt ../../output/SamplePersistentStorageFile.txt"
 cd ../door_sensor/
