@@ -38,7 +38,7 @@ typedef struct message
 	message_type type;
 	long timestamp;
 	int logical_clock[CLOCK_SIZE];
-	union
+	struct
 	{
 		int value;
 		struct
