@@ -9,7 +9,6 @@
 #define SENSOR_H_
 
 #include <pthread.h>
-
 #include "message.h"
 
 #include "network_read_thread.h"
@@ -23,7 +22,9 @@ typedef struct sensor_create_params
 	char *sensor_port_no;
 	char *sensor_area_id;
 	char *gateway_ip_address;
+	char *primary_gateway_ip_address;
 	char *gateway_port_no;
+	char *primary_gateway_port_no;
 	char *sensor_value_file_name;
 }sensor_create_params;
 
@@ -39,7 +40,7 @@ struct sensor_context
 {
 	sensor_create_params *sensor_params;
 	int interval;
-	int socket_fd;
+	int socket_fd[2];
 	network_thread_handle network_thread;
 	pthread_t set_value_thread;
 	int clock;
@@ -54,6 +55,7 @@ struct sensor_context
 	int logical_clock[CLOCK_SIZE];
 	int active_gateway;
 	pthread_mutex_t mutex_lock;
+	int gatway_decided;
 };
 
 int create_sensor(sensor_handle *handle, sensor_create_params *params);

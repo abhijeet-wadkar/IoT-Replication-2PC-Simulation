@@ -52,6 +52,8 @@ int create_sensor(sensor_handle *handle, sensor_create_params *params)
 	sensor->run = 1;
 	sensor->recv_peer_count = 0;
 	sensor->send_peer_count = 0;
+	sensor->active_gateway = 1;
+	sensor->gatway_decided = 0;
 
 	pthread_mutex_init(&sensor->mutex_lock, NULL);
 
@@ -91,7 +93,7 @@ int create_sensor(sensor_handle *handle, sensor_create_params *params)
 	}
 
 	/* create connection to server */
-	return_value = create_socket(&sensor->socket_fd, params->gateway_ip_address, params->gateway_port_no);
+	return_value = create_socket(&sensor->socket_fd[1], params->gateway_ip_address, params->gateway_port_no);
 	if(E_SUCCESS != return_value)
 	{
 		LOG_ERROR(("ERROR: Connection to Server failed\n"));
@@ -100,13 +102,32 @@ int create_sensor(sensor_handle *handle, sensor_create_params *params)
 	}
 
 	/* add socket to network read thread */
-	return_value = add_socket(sensor->network_thread, sensor->socket_fd,  (void*)sensor, &read_callback);
+	return_value = add_socket(sensor->network_thread, sensor->socket_fd[1],  (void*)sensor, &read_callback);
 	if(E_SUCCESS != return_value)
 	{
 		LOG_ERROR(("ERROR: add_socket() filed\n"));
 		delete_sensor((sensor_handle)sensor);
 		return (return_value);
 	}
+
+	/* create connection to server */
+	return_value = create_socket(&sensor->socket_fd[0], params->primary_gateway_ip_address, params->primary_gateway_port_no);
+	if(E_SUCCESS != return_value)
+	{
+		LOG_ERROR(("ERROR: Connection to Server failed\n"));
+		delete_sensor((sensor_handle)sensor);
+		return (return_value);
+	}
+
+	/* add socket to network read thread */
+	return_value = add_socket(sensor->network_thread, sensor->socket_fd[0],  (void*)sensor, &read_callback);
+	if(E_SUCCESS != return_value)
+	{
+		LOG_ERROR(("ERROR: add_socket() filed\n"));
+		delete_sensor((sensor_handle)sensor);
+		return (return_value);
+	}
+
 
 	message msg;
 
@@ -117,7 +138,13 @@ int create_sensor(sensor_handle *handle, sensor_create_params *params)
 	msg.u.s.port_no = sensor->sensor_params->sensor_port_no;
 	msg.u.s.area_id = sensor->sensor_params->sensor_area_id;
 
-	return_value = write_message(sensor->socket_fd, sensor->logical_clock, &msg);
+	return_value = write_message(sensor->socket_fd[0], sensor->logical_clock, &msg);
+	if(E_SUCCESS != return_value)
+	{
+		LOG_ERROR(("ERROR: Error in registering sensor\n"));
+		return (E_FAILURE);
+	}
+	return_value = write_message(sensor->socket_fd[1], sensor->logical_clock, &msg);
 	if(E_SUCCESS != return_value)
 	{
 		LOG_ERROR(("ERROR: Error in registering sensor\n"));
@@ -151,7 +178,8 @@ void delete_sensor(sensor_handle handle)
 		}
 		if(sensor->socket_fd)
 		{
-			close_socket(sensor->socket_fd);
+			close_socket(sensor->socket_fd[0]);
+			close_socket(sensor->socket_fd[1]);
 		}
 		if(sensor->set_value_thread)
 		{
@@ -201,13 +229,13 @@ static void* accept_callback(void *context)
 	}
 	//client->connection_state = 1;
 
-	LOG_SCREEN(("INFO: All Peers connected successfully\n"));
-
-	if(sensor->send_peer_count == 2 && sensor->recv_peer_count == 2)
+	LOG_SCREEN(("INFO: All Peers connected successfully...\n"));
+	if(sensor->send_peer_count == 2 && sensor->recv_peer_count ==2)
 	{
+		sensor->active_gateway = sensor->gatway_decided;
+		printf("INFO: Active gateway = %d\n", sensor->active_gateway);
 		pthread_create(&sensor->set_value_thread, NULL, &set_value_thread, sensor);
 	}
-
 	return (NULL);
 }
 
@@ -259,7 +287,7 @@ static void* read_callback(void *context)
 	peer *client = NULL;
 	int msg_logical_clock[CLOCK_SIZE];
 
-	return_value = read_message(sensor->socket_fd, msg_logical_clock, &msg);
+	return_value = read_message(sensor->socket_fd[sensor->active_gateway -1], msg_logical_clock, &msg);
 	if(return_value != E_SUCCESS)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
@@ -291,21 +319,20 @@ static void* read_callback(void *context)
 		client->port_no = msg.u.s.port_no;
 
 		// check for the serving gateway
-		if(!(sensor->active_gateway))
+		if(!(sensor->gatway_decided))
 		{
 			if(*(msg.u.s.area_id) == '1')
 			{
 				// serving gateway is one
-				sensor->active_gateway = 1;
+				sensor->gatway_decided = 1;
 			}
 			else
 			{
 				// only a sensor and a device are served by gateway 1
 				// other sensors will be served by gateway 2 or replica gateway
-				sensor->active_gateway = 2;
+				sensor->gatway_decided = 2;
 			}
 		}
-		printf("INFO: Active gatewy = %d\n", sensor->active_gateway);
 		LOG_INFO(("INFO: New Peer %s, %s\n", client->ip_address, client->port_no));
 
 		/* create connection to server */
@@ -342,6 +369,8 @@ static void* read_callback(void *context)
 
 		if(sensor->send_peer_count == 2 && sensor->recv_peer_count == 2)
 		{
+			sensor->active_gateway = sensor->gatway_decided;
+			printf("INFO: Active gatewy = %d\n", sensor->active_gateway);
 			pthread_create(&sensor->set_value_thread, NULL, &set_value_thread, sensor);
 		}
 
@@ -420,7 +449,7 @@ void* set_value_thread(void *context)
 		print_logical_clock(sensor->logical_clock);
 		LOG_SCREEN(("timestamp: %lu, Motion: %s\n", msg.timestamp, tokens[2]));
 		LOG_INFO(("timestamp: %lu, Motion: %s\n", msg.timestamp, tokens[2]));
-		return_value = write_message(sensor->socket_fd, sensor->logical_clock, &msg);
+		return_value = write_message(sensor->socket_fd[sensor->active_gateway - 1], sensor->logical_clock, &msg);
 		if(E_SUCCESS != return_value)
 		{
 			LOG_ERROR(("ERROR: Error in sending sensor temperature value to gateway\n"));

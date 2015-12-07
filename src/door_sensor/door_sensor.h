@@ -55,6 +55,7 @@ struct sensor_context
 	int logical_clock[CLOCK_SIZE];
 	int active_gateway;
 	pthread_mutex_t mutex_lock;
+	int gatway_decided;
 };
 
 int create_sensor(sensor_handle *handle, sensor_create_params *params);

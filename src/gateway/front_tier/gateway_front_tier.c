@@ -160,7 +160,7 @@ void* message_handler(void *context)
 			}
 
 			// Check if all the components of the system are connected to the gateway
-			if (gateway->client_count == 6)
+			if (gateway->client_count == 6 && gateway->primary_flag == 1)
 			{
 				char load_balancing_factor = '0';
 				LOG_SCREEN(("All Devices registered successfully\n"));
@@ -699,6 +699,7 @@ int create_gateway(gateway_handle* handle, gateway_create_params *params)
 				&& strcmp(params->primary_gateway_port_no, params->gateway_port_no)==0)
 	{
 		gateway->primary_flag = 1;
+		LOG_SCREEN(("DEBUG: I'm Primary\n"));
 	}
 	else
 	{
