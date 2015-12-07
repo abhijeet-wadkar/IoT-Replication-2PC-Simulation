@@ -17,18 +17,19 @@ static int max(int a, int b)
 
 int check_devlivery(int local_clock[CLOCK_SIZE], int msg_clock[CLOCK_SIZE])
 {
-	int flag = 0;
+	int flag = 0, flag1 = 0;
 	for(int index=0; index<CLOCK_SIZE; index++)
 	{
 		if(local_clock[index] != msg_clock[index])
 		{
-			if(local_clock[index]+1 != msg_clock[index])
+			flag1++;
+			if(local_clock[index] + 1 != msg_clock[index])
 			{
 				flag++;
 			}
 		}
 	}
-	if(flag > 1)
+	if(flag > 1 || flag1 > 1)
 		return 0;
 	return 1;
 }
