@@ -22,8 +22,8 @@
 #include "string_helper_functions.h"
 
 char* device_string[] = {
-		"door_sensor",
 		"motion_sensor",
+		"door_sensor",
 		"key_chain_sensor",
 		"security_device",
 		"gateway",
@@ -61,6 +61,7 @@ typedef struct transaction_context
 void* accept_callback(void *context);
 void* primary_gateway_callback(void *context);
 void* read_callback(void*);
+void* forwarding_read_callback(void*);
 void* message_handler(void*);
 void print_state(gateway_context *gateway);
 
@@ -160,20 +161,24 @@ void* message_handler(void *context)
 			}
 
 			// Check if all the components of the system are connected to the gateway
-			if (gateway->client_count == 6 && gateway->primary_flag == 1)
+			if (gateway->client_count == 7 && gateway->primary_flag == 1)
 			{
 				char load_balancing_factor = '0';
 				LOG_SCREEN(("All Devices registered successfully\n"));
 				for(int index=0; index < gateway->client_count; index++)
 				{
-					if(gateway->clients[index]->type != BACK_TIER_GATEWAY && gateway->clients[index]->type != SECURITY_DEVICE && gateway->clients[index]->type != REPLICA_GATEWAY)
+					if(gateway->clients[index]->type != BACK_TIER_GATEWAY
+							&& gateway->clients[index]->type != SECURITY_DEVICE
+							&& gateway->clients[index]->type != REPLICA_GATEWAY
+							&&gateway->clients[index]->type != FORWARD_GATEWAY)
 					{
 						for(int index1=0; index1<gateway->client_count; index1++)
 						{
 							if(0 != strcmp(gateway->clients[index]->client_port_number, gateway->clients[index1]->client_port_number)
 									&& gateway->clients[index1]->type != BACK_TIER_GATEWAY
 									&& gateway->clients[index1]->type != SECURITY_DEVICE
-									&& gateway->clients[index1]->type != REPLICA_GATEWAY)
+									&& gateway->clients[index1]->type != REPLICA_GATEWAY
+									&& gateway->clients[index1]->type != FORWARD_GATEWAY)
 							{
 								message msg;
 								msg.type = REGISTER;
@@ -736,6 +741,37 @@ int create_gateway(gateway_handle* handle, gateway_create_params *params)
 			return (return_value);
 		}
 
+		/*establish connection to primary gateway for forwarding*/
+		return_value = create_socket(&gateway->forwarding_socket_fd, params->primary_gateway_ip_address, params->primary_gateway_port_no);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: Error in connecting to primary gateway\n"));
+			delete_gateway((gateway_handle)gateway);
+			return (return_value);
+		}
+
+		/* add socket to network read thread */
+		return_value = add_socket(gateway->network_thread, gateway->forwarding_socket_fd,  (void*)gateway, &forwarding_read_callback);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: add_socket() failed\n"));
+			delete_gateway((gateway_handle)gateway);
+			return (return_value);
+		}
+
+		msg.type = REGISTER;
+		msg.u.s.type = FORWARD_GATEWAY;
+		msg.u.s.ip_address = params->gateway_ip_address;
+		msg.u.s.port_no = params->gateway_port_no;
+		msg.u.s.area_id = "1";
+		return_value = write_message(gateway->forwarding_socket_fd, gateway->logical_clock, &msg);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: Error in connecting to primary gateway\n"));
+			delete_gateway((gateway_handle)gateway);
+			return (return_value);
+		}
+
 	}
 
 	pthread_create(&gateway->message_handler_thread, NULL, message_handler, gateway);
@@ -774,6 +810,11 @@ void delete_gateway(gateway_handle handle)
 
 		free(gateway);
 	}
+}
+
+void* forwarding_read_callback(void* context)
+{
+	return NULL;
 }
 
 void* primary_gateway_callback(void *context)
@@ -1032,65 +1073,151 @@ void* read_callback(void *context)
 		return NULL;
 	}
 
-	pthread_mutex_lock(&gateway->mutex_lock);
-
-	buffer_message = 0;
-	signal_message_handler = 0;
-	//adjust_clock(gateway->logical_clock, msg_logical_clock);
-	if(check_devlivery(gateway->logical_clock, msg_logical_clock))
+	if(gateway->primary_flag == 1 || msg->type == REGISTER)
 	{
-		/* correct order message */
-		/* adjust clock */
-		add_queue(&gateway->msg_queue, msg_context);
-		adjust_clock(gateway->logical_clock, msg_logical_clock);
-		signal_message_handler = 1;
+
+		if(client->type == FORWARD_GATEWAY)
+		{
+			for(int index=0; index<gateway->client_count; index++)
+			{
+				if(gateway->clients[index]->type == msg->u.s.type)
+				{
+					msg_context->client = gateway->clients[index];
+					break;
+				}
+			}
+		}
+
+		pthread_mutex_lock(&gateway->mutex_lock);
+		buffer_message = 0;
+		signal_message_handler = 0;
+		//adjust_clock(gateway->logical_clock, msg_logical_clock);
+		if(check_devlivery(gateway->logical_clock, msg_logical_clock, msg_context->client->type))
+		{
+			/* correct order message */
+			/* adjust clock */
+			LOG_INFO(("------------------------------------\n"));
+			LOG_INFO(("INFO: Message delivered\n"));
+			LOG_INFO(("INFO: Process Clock : "));
+			print_logical_clock(gateway->logical_clock);
+			LOG_INFO((", timestamp: %lu, From %s:%s\n",
+					msg->timestamp,
+					client->client_ip_address,
+					client->client_port_number));
+			add_queue(&gateway->msg_queue, msg_context);
+			adjust_clock(gateway->logical_clock, msg_logical_clock);
+			signal_message_handler = 1;
+
+			LOG_INFO(("INFO: Message timest: "));
+			print_logical_clock(msg_logical_clock);
+			LOG_INFO((", timestamp: %lu, From %s:%s:Process: %d\n",
+					msg->timestamp,
+					client->client_ip_address,
+					client->client_port_number,
+					msg_context->client->type));
+
+			LOG_INFO(("INFO: Process Clock : "));
+			print_logical_clock(gateway->logical_clock);
+			LOG_INFO((", timestamp: %lu, From %s:%s\n",
+					msg->timestamp,
+					client->client_ip_address,
+					client->client_port_number));
+			LOG_INFO(("------------------------------------\n"));
+
+		}
+		else
+		{
+			/* buffer message */
+			buffer_message = 1;
+		}
+		if(buffer_message)
+		{
+			LOG_INFO(("---------------------------------------\n"));
+			LOG_INFO(("DEBUG: Message buffered\n"))
+			LOG_SCREEN(("DEBUG: Message buffered\n"));
+
+			LOG_INFO(("INFO: Message timest: "));
+			print_logical_clock(msg_logical_clock);
+			LOG_INFO((", timestamp: %lu, From %s:%s:Process: %d\n",
+					msg->timestamp,
+					client->client_ip_address,
+					client->client_port_number,
+					msg_context->client->type));
+
+			LOG_INFO(("INFO: Process Clock : "));
+			print_logical_clock(gateway->logical_clock);
+			LOG_INFO((", timestamp: %lu, From %s:%s\n",
+					msg->timestamp,
+					client->client_ip_address,
+					client->client_port_number));
+			LOG_INFO(("---------------------------------------\n"));
+
+			for(int index=0; index<100; index++)
+			{
+				if(gateway->buffered_messages[index] == NULL)
+				{
+					gateway->buffered_messages[index] = msg_context;
+					break;
+				}
+			}
+		}
+
+		/* Check other buffered message */
+		for(int index=0; index<100; index++)
+		{
+			if(gateway->buffered_messages[index])
+			{
+				message_context *temp_message = (message_context*)gateway->buffered_messages[index];
+				if(check_devlivery(gateway->logical_clock, temp_message->msg->logical_clock, temp_message->client->type))
+				{
+					LOG_INFO(("-------------------------------------------\n"));
+					LOG_INFO(("INFO: Message Delivered from buffered queue\n"));
+					LOG_INFO(("INFO: Process Clock : "));
+					print_logical_clock(gateway->logical_clock);
+					LOG_INFO((", timestamp: %lu, From %s:%s\n",
+							msg->timestamp,
+							client->client_ip_address,
+							client->client_port_number));
+
+					add_queue(&gateway->msg_queue, temp_message);
+					adjust_clock(gateway->logical_clock, temp_message->msg->logical_clock);
+					gateway->buffered_messages[index] = NULL;
+					index = 0;
+					signal_message_handler = 1;
+
+					LOG_INFO(("INFO: Message timest: "));
+					print_logical_clock(temp_message->msg->logical_clock);
+					LOG_INFO((", timestamp: %lu, From %s:%s:Process: %d\n",
+							msg->timestamp,
+							client->client_ip_address,
+							client->client_port_number,
+							msg_context->client->type));
+					LOG_INFO(("INFO: Process Clock : "));
+					print_logical_clock(gateway->logical_clock);
+					LOG_INFO((", timestamp: %lu, From %s:%s\n",
+							msg->timestamp,
+							client->client_ip_address,
+							client->client_port_number));
+					LOG_INFO(("--------------------------------\n"));
+				}
+			}
+		}
+		if(signal_message_handler)
+		{
+			pthread_cond_signal(&gateway->cond_lock);
+		}
+
+		pthread_mutex_unlock(&gateway->mutex_lock);
 	}
 	else
 	{
-		/* buffer message */
-		buffer_message = 1;
-	}
-
-	if(buffer_message)
-	{
-		LOG_SCREEN(("DEBUG: Message buffered\n"));
-		for(int index=0; index<100; index++)
+		//forward the message
+		return_value = write_message(gateway->forwarding_socket_fd, msg_logical_clock, msg);
+		if(return_value != E_SUCCESS)
 		{
-			if(gateway->buffered_messages[index] == NULL)
-			{
-				gateway->buffered_messages[index] = msg_context;
-				break;
-			}
+			LOG_ERROR(("ERROR: Unable to forward the message to primary gateway\n"));
 		}
 	}
-
-	/* Check other buffered message */
-	for(int index=0; index<100; index++)
-	{
-		if(gateway->buffered_messages[index])
-		{
-			message_context *temp_message = (message_context*)gateway->buffered_messages[index];
-			if(check_devlivery(gateway->logical_clock, temp_message->msg->logical_clock))
-			{
-				add_queue(&gateway->msg_queue, temp_message);
-				adjust_clock(gateway->logical_clock, temp_message->msg->logical_clock);
-				gateway->buffered_messages[index] = NULL;
-				index = 0;
-				signal_message_handler = 1;
-			}
-		}
-	}
-
-	if(signal_message_handler)
-	{
-		pthread_cond_signal(&gateway->cond_lock);
-	}
-
-	LOG_INFO(("INFO: Event Received: "));
-	print_logical_clock(gateway->logical_clock);
-	LOG_INFO((", timestamp: %lu, From %s:%s\n", msg->timestamp, client->client_ip_address, client->client_port_number));
-
-	pthread_mutex_unlock(&gateway->mutex_lock);
 
 	return (NULL);
 }

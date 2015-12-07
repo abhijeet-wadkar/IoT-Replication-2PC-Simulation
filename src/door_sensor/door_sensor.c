@@ -429,7 +429,7 @@ void* set_value_thread(void *context)
 
 		pthread_mutex_lock(&sensor->mutex_lock);
 
-		sensor->logical_clock[1]++;
+		sensor->logical_clock[DOOR_SENSOR]++;
 
 		LOG_SCREEN(("INFO: Event Sent, "));
 		LOG_INFO(("INFO: Event Sent, "));

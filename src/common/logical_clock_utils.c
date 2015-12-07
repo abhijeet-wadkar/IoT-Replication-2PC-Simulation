@@ -15,22 +15,30 @@ static int max(int a, int b)
 	return (b);
 }
 
-int check_devlivery(int local_clock[CLOCK_SIZE], int msg_clock[CLOCK_SIZE])
+int check_devlivery(int local_clock[CLOCK_SIZE], int msg_clock[CLOCK_SIZE], int client_no)
 {
-	int flag = 0, flag1 = 0;
-	for(int index=0; index<CLOCK_SIZE; index++)
+	int index, flag = 0;
+
+	for(index=0; index<CLOCK_SIZE; index++)
 	{
-		if(local_clock[index] != msg_clock[index])
+		if(msg_clock[index]!=0)
+			break;
+	}
+	if(index==CLOCK_SIZE)
+		return 1;
+
+	if(msg_clock[client_no] != local_clock[client_no]+1)
+	{
+		return 0;
+	}
+
+	for(index=0; index<CLOCK_SIZE; index++)
+	{
+		if(msg_clock[index] > local_clock[index]  && index!=client_no)
 		{
-			flag1++;
-			if(local_clock[index] + 1 != msg_clock[index])
-			{
-				flag++;
-			}
+			return 0;
 		}
 	}
-	if(flag > 1 || flag1 > 1)
-		return 0;
 	return 1;
 }
 

@@ -442,7 +442,7 @@ void* set_value_thread(void *context)
 		msg.timestamp = time(NULL);
 
 		pthread_mutex_lock(&sensor->mutex_lock);
-		sensor->logical_clock[0]++;
+		sensor->logical_clock[MOTION_SENSOR]++;
 		LOG_SCREEN(("INFO: Event Sent, "));
 		LOG_INFO(("INFO: Event Sent, "));
 		print_logical_clock_to_screen(sensor->logical_clock);

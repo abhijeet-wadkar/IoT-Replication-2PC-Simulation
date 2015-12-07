@@ -120,6 +120,10 @@ device_type get_device_type(char *str)
 	{
 		return REPLICA_GATEWAY;
 	}
+	else if(strcmp(str, "forward_gateway")==0)
+	{
+		return FORWARD_GATEWAY;
+	}
 	return (UNKNOWN);
 }
 
@@ -352,6 +356,9 @@ int write_message(int socket_fd, int logical_clock[CLOCK_SIZE], message *msg)
 		case REPLICA_GATEWAY:
 			strcat(buffer, "replica_gateway");
 			break;
+		case FORWARD_GATEWAY:
+			strcat(buffer, "forward_gateway");
+			break;
 		default:
 			break;
 		}
@@ -390,6 +397,9 @@ int write_message(int socket_fd, int logical_clock[CLOCK_SIZE], message *msg)
 			break;
 		case REPLICA_GATEWAY:
 			strcat(buffer, "replica_gateway");
+			break;
+		case FORWARD_GATEWAY:
+			strcat(buffer, "forward_gateway");
 			break;
 		default:
 			break;
