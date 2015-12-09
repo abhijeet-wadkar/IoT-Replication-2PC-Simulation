@@ -290,11 +290,17 @@ static void* read_callback(void *context)
 	return_value = read_message(sensor->socket_fd[sensor->active_gateway -1], msg_logical_clock, &msg);
 	if(return_value != E_SUCCESS)
 	{
-		if(return_value == E_SOCKET_CONNECTION_CLOSED)
+		remove_socket(sensor->network_thread, sensor->socket_fd[sensor->active_gateway -1]);
+		close_socket(sensor->socket_fd[sensor->active_gateway -1]);
+		sensor->socket_fd[sensor->active_gateway -1] = -1;
+
+		if(sensor->socket_fd[0] == -1 && sensor->socket_fd[1] == -1)
 		{
-	//		LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
-			//exit(0);
+			LOG_ERROR(("ERROR: Both gateway terminated, so exiting....\n"));
+			exit(0);
 		}
+
+		sensor->active_gateway == 1?(sensor->active_gateway=2):(sensor->active_gateway = 1);
 	//	LOG_ERROR(("ERROR: Error in read message\n"));
 		return NULL;
 	}
