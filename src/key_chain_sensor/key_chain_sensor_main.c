@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include <signal.h>
 
 #include "common.h"
 #include "key_chain_sensor.h"
@@ -15,6 +16,15 @@
 #include "error_codes.h"
 
 #define TOKEN_MAX 10
+
+void signal_handler(int signum)
+{
+        if(signum == SIGPIPE)
+        {
+                // just for debugging purpose
+                LOG_INFO(("in signal hanlder handling SIGPIPE"));
+        }
+}
 
 int main(int argc, char*argv[])
 {
@@ -27,6 +37,7 @@ int main(int argc, char*argv[])
 	sensor_handle sensor = NULL;
 	int return_value = 0;
 
+	signal(SIGPIPE, signal_handler);
 	LOG_DEBUG(("DEBUG: Number of arguments are: %d\n", argc));
 
 	if(argc<3)

@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include <signal.h>
 
 #include "common.h"
 #include "gateway.h"
@@ -17,6 +18,14 @@
 
 #define TOKEN_MAX 10
 
+void signal_handler(int signum)
+{
+        if(signum == SIGPIPE)
+        {
+                // just for debugging purpose
+                LOG_INFO(("in signal hanlder handling SIGPIPE"));
+        }
+}
 int main(int argc, char*argv[])
 {
 	char *conf_file_name = NULL;
@@ -28,6 +37,7 @@ int main(int argc, char*argv[])
 	gateway_handle gateway = NULL;
 	int return_value = E_FAILURE;
 
+	signal(SIGPIPE, signal_handler);
 	LOG_DEBUG(("DEBUG: Number of arguments are: %d\n", argc));
 
 	if(argc<3)

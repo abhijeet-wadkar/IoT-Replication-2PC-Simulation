@@ -7,12 +7,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include <signal.h>
+
 
 #include "common.h"
 #include "device.h"
 #include "logger.h"
 #include "string_helper_functions.h"
-#include "error_codes.h"
+#include "error_icodes.h"
+
+void signal_handler(int signum)
+{
+        if(signum == SIGPIPE)
+        {
+                // just for debugging purpose
+                LOG_INFO(("in signal hanlder handling SIGPIPE"));
+        }
+}
 
 #define TOKEN_MAX 10
 
@@ -27,6 +38,7 @@ int main(int argc, char*argv[])
 	device_handle device = NULL;
 	int return_value = 0;
 
+	signal(SIGPIPE, signal_handler);
 	LOG_DEBUG(("DEBUG: Number of arguments are: %d\n", argc));
 
 	if(argc<3)
