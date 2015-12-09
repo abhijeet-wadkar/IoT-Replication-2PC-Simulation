@@ -115,10 +115,10 @@ static void* read_callback(void *context)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
-			LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
-			exit(0);
+		//	LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
+			//exit(0);
 		}
-		LOG_ERROR(("ERROR: Error in read message\n"));
+		//LOG_ERROR(("ERROR: Error in read message\n"));
 		return NULL;
 	}
 

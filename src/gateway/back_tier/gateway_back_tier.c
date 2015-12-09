@@ -174,9 +174,9 @@ void* read_callback(void *context)
 	return_value = read_msg_from_frontend(gateway->server_socket_fd, &string);
 	if(return_value != E_SUCCESS)
 	{
-		LOG_ERROR(("ERROR: Error in read message\n"));
-		LOG_ERROR(("ERROR: Connection closed from peer\n"));
-		exit(0);
+	//	LOG_ERROR(("ERROR: Error in read message\n"));
+	//	LOG_ERROR(("ERROR: Connection closed from peer\n"));
+		//exit(0);
 		return (NULL);
 	}
 

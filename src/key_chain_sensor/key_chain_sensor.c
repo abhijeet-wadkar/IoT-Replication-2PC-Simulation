@@ -255,9 +255,9 @@ static void* read_callback_peer(void *context)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
-			LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
+		//	LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
 		}
-		LOG_ERROR(("ERROR: Error in read message\n"));
+	//	LOG_ERROR(("ERROR: Error in read message\n"));
 		return NULL;
 	}
 
@@ -292,10 +292,10 @@ static void* read_callback(void *context)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
-			LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
-			exit(0);
+	//		LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
+			//exit(0);
 		}
-		LOG_ERROR(("ERROR: Error in read message\n"));
+	//	LOG_ERROR(("ERROR: Error in read message\n"));
 		return NULL;
 	}
 
@@ -426,7 +426,7 @@ void* set_value_thread(void *context)
 
 			start = atoi(tokens[0]);
 			end = atoi(tokens[1]);
-			if(strcmp (tokens[2], "true") == 0)
+			if(strcasecmp (tokens[2], "true") == 0)
 			{
 				value = 1; 
 			}

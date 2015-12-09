@@ -1,204 +1,24 @@
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 139638047688624, From (null):(null)
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449760, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449760, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449765, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449765, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449770, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449770, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449775, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449775, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449780, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449780, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449785, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449785, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449790, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449790, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449795, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449795, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449800, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449800, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449805, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449805, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449810, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449810, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449815, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449815, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449820, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449820, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449825, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449825, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449830, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449830, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449835, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449835, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449840, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449840, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449845, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449845, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449850, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449850, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449855, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449855, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449860, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449860, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449865, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449865, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449870, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449870, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449875, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449875, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449880, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449880, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449885, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449885, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449890, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449890, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449895, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449895, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449900, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449900, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449905, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449905, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449910, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449910, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449915, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449915, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449920, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449920, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449925, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449925, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449930, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449930, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449935, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449935, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449940, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449940, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449945, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449945, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449950, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449950, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449955, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449955, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449960, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449960, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449965, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449965, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449970, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449970, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449975, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449975, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449980, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449980, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449985, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449985, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449990, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449990, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449995, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449449995, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450000, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450000, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450005, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450005, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450010, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450010, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450015, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450015, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450020, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450020, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450025, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450025, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450030, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450030, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450035, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450035, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450040, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450040, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450045, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450045, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450050, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450050, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450055, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450055, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450060, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450060, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450065, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450065, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450070, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450070, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450075, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450075, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450080, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450080, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450085, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450085, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450090, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450090, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450095, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450095, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450100, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450100, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450105, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450105, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450110, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450110, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450115, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450115, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450120, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450120, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450125, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450125, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450130, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450130, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450135, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450135, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450140, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450140, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450145, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450145, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450150, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450150, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450155, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450155, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450160, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450160, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450165, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450165, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450170, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450170, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450175, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450175, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450180, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450180, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450185, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450185, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450190, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450190, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450195, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450195, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450200, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450200, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450205, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450205, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450210, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450210, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450215, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450215, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450220, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450220, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450225, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450225, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450230, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450230, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450235, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450235, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450240, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450240, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450245, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450245, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450250, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450250, From 127.0.0.1:7001
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450255, From 127.0.0.1:7003
-INFO: Event Received: CLOCK<0,0,0,0>, timestamp: 1449450255, From 127.0.0.1:7001
+------------------------------------
+INFO: Message delivered
+INFO: Process Clock : CLOCK<0,0,0,0>, timestamp: 140036195895216, From (null):(null)
+INFO: Message timest: CLOCK<0,0,0,0>, timestamp: 140036195895216, From (null):(null):Process: 8
+INFO: Process Clock : CLOCK<0,0,0,0>, timestamp: 140036195895216, From (null):(null)
+------------------------------------
+------------------------------------
+INFO: Message delivered
+INFO: Process Clock : CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
+INFO: Message timest: CLOCK<0,0,0,0>, timestamp: 0, From (null):(null):Process: 8
+INFO: Process Clock : CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
+------------------------------------
+------------------------------------
+INFO: Message delivered
+INFO: Process Clock : CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
+INFO: Message timest: CLOCK<0,0,0,0>, timestamp: 0, From (null):(null):Process: 8
+INFO: Process Clock : CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
+------------------------------------
+------------------------------------
+INFO: Message delivered
+INFO: Process Clock : CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
+INFO: Message timest: CLOCK<0,0,0,0>, timestamp: 0, From (null):(null):Process: 8
+INFO: Process Clock : CLOCK<0,0,0,0>, timestamp: 0, From (null):(null)
+------------------------------------

@@ -838,9 +838,11 @@ void* primary_gateway_callback(void *context)
 	return_value = read_msg_from_frontend(gateway->primary_gateway_socket_fd, &string);
 	if(E_SUCCESS != return_value)
 	{
-		LOG_ERROR(("ERROR: Unable to read the data from socket\n"));
-		LOG_ERROR(("ERROR: Connection closed by peer...\n"));
-		exit(0);
+		if(return_value == E_SOCKET_CONNECTION_CLOSED)
+		{
+			LOG_ERROR(("ERROR: Primary gateway crash detected...\n"));
+		}
+		//exit(0);
 		return (NULL);
 	}
 
@@ -1035,13 +1037,13 @@ void* read_callback(void *context)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
-			LOG_ERROR(("ERROR: Connection closed for client: %s-%s-%s...\n",
-					client->client_ip_address,
-					client->client_port_number,
-					client->area_id));
+			//LOG_ERROR(("ERROR: Connection closed for client: %s-%s-%s...\n",
+			//		client->client_ip_address,
+			//		client->client_port_number,
+			//		client->area_id));
 			remove_socket(client->gateway->network_thread, client->comm_socket_fd);
 			client->connection_state = 0;
-			LOG_ERROR(("ERROR: Connection closed for client\n"));
+			//LOG_ERROR(("ERROR: Connection closed for client\n"));
 			index = 0;
 			flag_found = 0;
 			for(index=0; index<gateway->client_count; index++)
@@ -1069,7 +1071,7 @@ void* read_callback(void *context)
 			free(client);
 			return NULL;
 		}
-		LOG_ERROR(("ERROR: Error in read message, error: %d\n", return_value));
+		//LOG_ERROR(("ERROR: Error in read message, error: %d\n", return_value));
 		return NULL;
 	}
 

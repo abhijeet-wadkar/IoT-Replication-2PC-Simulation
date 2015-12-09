@@ -255,9 +255,9 @@ static void* read_callback_peer(void *context)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
-			LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
+	//		LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
 		}
-		LOG_ERROR(("ERROR: Error in read message\n"));
+	//	LOG_ERROR(("ERROR: Error in read message\n"));
 		return NULL;
 	}
 
@@ -292,10 +292,20 @@ static void* read_callback(void *context)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
-			LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
-			exit(0);
+		//	LOG_ERROR(("ERROR: Socket connection from server closed...\n"));
+			remove_socket(sensor->network_thread, sensor->socket_fd[sensor->active_gateway -1]);
+			close_socket(sensor->socket_fd[sensor->active_gateway -1]);
+			sensor->socket_fd[sensor->active_gateway -1] = -1;
+
+			if(sensor->socket_fd[0] == -1 && sensor->socket_fd[1] == -1)
+			{
+				LOG_ERROR(("ERROR: Both gateway terminated, so exiting....\n"));
+				exit(0);
+			}
+
+			sensor->active_gateway == 1?(sensor->active_gateway=2):(sensor->active_gateway = 1);
 		}
-		LOG_ERROR(("ERROR: Error in read message\n"));
+		//LOG_ERROR(("ERROR: Error in read message\n"));
 		return NULL;
 	}
 
@@ -409,7 +419,7 @@ void* set_value_thread(void *context)
 	}
 	str_tokenize(line, ";\n\r", tokens, &count);
 	start = atoi(tokens[0]);
-	if(!strcmp (tokens[1], "open"))
+	if(!strcasecmp (tokens[1], "open"))
 	{
 		value = 1;
 	}
@@ -476,7 +486,7 @@ void* set_value_thread(void *context)
 		}
 
 		start = atoi(tokens[0]);
-		if(!strcmp (tokens[1], "open"))
+		if(!strcasecmp (tokens[1], "open"))
 		{
 			value = 1;
 		}
