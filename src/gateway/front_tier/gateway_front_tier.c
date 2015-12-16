@@ -480,9 +480,11 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 			return E_INVALID_MESSAGE;
 		}
 
-		LOG_SCREEN(("2PC: TID=%d Transaction Started\n", gateway->transaction_number));
+		LOG_INFO(("2PC: TID%d: Transaction Started\n", gateway->transaction_number));
+		LOG_SCREEN(("2PC: TID%d: Transaction Started\n", gateway->transaction_number));
 		gateway->two_pc_state = INIT;
-		LOG_SCREEN(("2PC: Currently in INIT state\n"));
+		LOG_INFO(("2PC: TID%d: Currently in INIT state\n", gateway->transaction_number));
+		LOG_SCREEN(("2PC: TID%d: Currently in INIT state\n", gateway->transaction_number));
 		gateway->transaction_number++;
 
 		gateway->vote = 1;
@@ -491,7 +493,8 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 		str_copy(&gateway->message, commit_message);
 
 		sprintf(buffer, "Prepare:%d:%s", gateway->transaction_number, commit_message);
-		LOG_SCREEN(("2PC: TID=%d Prepare message sent\n", gateway->transaction_number));
+		LOG_INFO(("2PC: TID%d: Prepare message sent\n", gateway->transaction_number));
+		LOG_SCREEN(("2PC: TID%d: Prepare message sent\n", gateway->transaction_number));
 		gateway->two_pc_state = READY;
 
 		return_value = send_message_to_replicas(gateway, buffer);
@@ -500,7 +503,8 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 		}
 
-		LOG_SCREEN(("2PC: TID=%d Moving to waiting state\n", gateway->transaction_number));
+		LOG_INFO(("2PC: TID%d: Moving to waiting state\n", gateway->transaction_number));
+		LOG_SCREEN(("2PC: TID%d: Moving to waiting state\n", gateway->transaction_number));
 		gateway->two_pc_state = WAIT;
 		return E_SUCCESS;
 	}
@@ -517,7 +521,8 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 		{
 			return E_SUCCESS;
 		}
-		LOG_SCREEN(("2PC: TID=%d All votes from participant received\n", gateway->transaction_number));
+		LOG_INFO(("2PC: TID%d: All votes from participant received\n", gateway->transaction_number));
+		LOG_SCREEN(("2PC: TID%d: All votes from participant received\n", gateway->transaction_number));
 		if(gateway->vote == 1)
 		{
 			/* global commit */
@@ -528,7 +533,8 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 			}
 			gateway->two_pc_state = COMMIT;
-			LOG_SCREEN(("2PC: TID=%d Global commit sent\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Global commit sent\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Global commit sent\n", gateway->transaction_number));
 
 			sprintf(add_number_buff, "TID:%d----%s", gateway->transaction_number, gateway->message);
 			return_value = send_msg_to_backend(back_end_sock_fd, add_number_buff);
@@ -547,7 +553,8 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 				LOG_ERROR(("ERROR: Unable to send message to replicas\n"));
 			}
 
-			LOG_SCREEN(("2PC: TID=%d Global abort sent\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Global abort sent\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Global abort sent\n", gateway->transaction_number));
 			gateway->two_pc_state = ABORT;
 
 		}
@@ -557,7 +564,8 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 	{
 		if(receive_ack_from_replica(gateway, client) == 0)
 		{
-			LOG_ERROR(("2PC: TID=%d Acknowledge not received from all replicas\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Acknowledge not received from all replicas\n", gateway->transaction_number));
+			LOG_ERROR(("2PC: TID%d: Acknowledge not received from all replicas\n", gateway->transaction_number));
 			return (E_SUCCESS);
 		}
 		gateway->ack_count++;
@@ -566,7 +574,8 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 			return E_SUCCESS;
 		}
 
-		LOG_SCREEN(("2PC: TID=%d Transaction complete\n", gateway->transaction_number));
+		LOG_INFO(("2PC: TID%d: Transaction complete\n", gateway->transaction_number));
+		LOG_SCREEN(("2PC: TID%d: Transaction complete\n", gateway->transaction_number));
 		gateway->two_pc_state = NOTHING;
 	}
 	return (E_SUCCESS);
@@ -918,10 +927,12 @@ void* primary_gateway_callback(void *context)
 	{
 		if(strcmp(tokens[0], "Prepare") == 0)
 		{
-			LOG_SCREEN(("2PC: TID=%d Prepare message received\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Prepare message received\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Prepare message received\n", gateway->transaction_number));
 			gateway->two_pc_state = READY;
 			str_copy(&gateway->message, tokens[2]);
-			LOG_SCREEN(("2PC: TID=%d Commit_vote_sent\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Commit_vote_sent\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Commit_vote_sent\n", gateway->transaction_number));
 			sprintf(buffer, "Vote_Commit:%d:Empty", atoi(tokens[1]));
 			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, buffer);
 			if(E_SUCCESS != return_value)
@@ -933,8 +944,11 @@ void* primary_gateway_callback(void *context)
 		}
 		else if(strcmp(tokens[0], "Commit") == 0)
 		{
-			LOG_ERROR(("2PC: TID=%d Commit Received and in INIT state\n", gateway->transaction_number));
-			LOG_SCREEN(("2PC: TID=%d Abort_vote_sent\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Commit Received and in INIT state\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Commit Received and in INIT state\n", gateway->transaction_number));
+
+			LOG_SCREEN(("2PC: TID%d: Abort_vote_sent\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Abort_vote_sent\n", gateway->transaction_number));
 			sprintf(buffer, "Abort_Commit:%d:Empty", atoi(tokens[1]));
 			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, add_number_buff);
 			if(E_SUCCESS != return_value)
@@ -958,7 +972,8 @@ void* primary_gateway_callback(void *context)
 		}
 		else if(strcmp(tokens[0], "Commit") == 0)
 		{
-			LOG_SCREEN(("2PC: TID=%d Global commit message received\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Global commit message received\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Global commit message received\n", gateway->transaction_number));
 			gateway->two_pc_state = COMMIT;
 			/* send to persistent storage */
 			for(int index=0; index<gateway->client_count; index++)
@@ -980,13 +995,15 @@ void* primary_gateway_callback(void *context)
 			{
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 			}
-			LOG_SCREEN(("2PC: TID=%d Acknowledge for global commit sent\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Acknowledge for global commit sent\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Acknowledge for global commit sent\n", gateway->transaction_number));
 
 			gateway->two_pc_state = NOTHING;
 		}
 		else if(strcmp(tokens[0], "Abort") == 0)
 		{
-			LOG_SCREEN(("2PC: TID=%d Global abort message received\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Global abort message received\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Global abort message received\n", gateway->transaction_number));
 			gateway->two_pc_state = ABORT;
 
 			sprintf(buffer, "Ack:%d:Empty", atoi(tokens[1]));
@@ -995,7 +1012,8 @@ void* primary_gateway_callback(void *context)
 			{
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 			}
-			LOG_SCREEN(("2PC: TID=%d Acknowledge for global commit sent\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID%d: Acknowledge for global commit sent\n", gateway->transaction_number));
+			LOG_INFO(("2PC: TID%d: Acknowledge for global commit sent\n", gateway->transaction_number));
 
 			gateway->two_pc_state = NOTHING;
 		}
