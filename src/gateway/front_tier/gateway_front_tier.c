@@ -104,8 +104,7 @@ void* start_transaction(void *context)
 	transaction_context *tc = (transaction_context*)context;
 	int flag = 0;
 	int back_end_sock_fd;
-
-	LOG_SCREEN(("start_transaction++\n"));
+	char add_number_buffer[200] = {'\0'};
 
 	for(int index=0; index<tc->gateway->client_count; index++)
 	{
@@ -113,7 +112,6 @@ void* start_transaction(void *context)
 				&& tc->gateway->clients[index]->comm_socket_fd != -1)
 		{
 			flag = 1;
-			LOG_SCREEN(("Replica present\n"));
 		}
 		if(tc->gateway->clients[index]->type == BACK_TIER_GATEWAY)
 		{
@@ -124,7 +122,6 @@ void* start_transaction(void *context)
 	if(flag == 1)
 	{
 		pthread_mutex_lock(&tc->gateway->transaction_lock);
-		LOG_SCREEN(("INFO: starting transaction\n"));
 		while(tc->gateway->two_pc_state != NOTHING);
 
 		return_value = two_phase_commit(tc->gateway, tc->client, tc->buffer);
@@ -139,14 +136,14 @@ void* start_transaction(void *context)
 	else
 	{
 		LOG_SCREEN(("INFO: No Replica Found: Committing to local database\n"));
-		return_value = send_msg_to_backend(back_end_sock_fd, tc->buffer);
+		tc->gateway->transaction_number++;
+		sprintf(add_number_buffer, "TID:%d----%s", tc->gateway->transaction_number, tc->buffer);
+		return_value = send_msg_to_backend(back_end_sock_fd, add_number_buffer);
 		if(E_SUCCESS != return_value)
 		{
 			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 		}
 	}
-
-	LOG_SCREEN(("start_transaction--\n"));
 
 	pthread_exit(NULL);
 
@@ -247,12 +244,9 @@ void* message_handler(void *context)
 			break;
 		case CURRENT_VALUE:
 			LOG_DEBUG(("Current value message received\n"));
-			printf("Current value message received\n");
 			LOG_DEBUG(("Value: %d\n", msg->u.value));
 
 			client->value = msg->u.value;
-
-			LOG_SCREEN(("Value: %d\n", msg->u.value));
 
 			if(client->type == MOTION_SENSOR)
 			{
@@ -465,6 +459,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 	int return_value = E_FAILURE;
 	int back_end_sock_fd = -1;
 	char buffer[200] = {'\0'};
+	char add_number_buff[200] = {'\0'};
 
 
 	for(int index=0; index<gateway->client_count; index++)
@@ -485,7 +480,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 			return E_INVALID_MESSAGE;
 		}
 
-		LOG_SCREEN(("2PC: Transaction Started\n"));
+		LOG_SCREEN(("2PC: TID=%d Transaction Started\n", gateway->transaction_number));
 		gateway->two_pc_state = INIT;
 		LOG_SCREEN(("2PC: Currently in INIT state\n"));
 		gateway->transaction_number++;
@@ -496,7 +491,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 		str_copy(&gateway->message, commit_message);
 
 		sprintf(buffer, "Prepare:%d:%s", gateway->transaction_number, commit_message);
-		LOG_SCREEN(("2PC: Prepare message sent\n"));
+		LOG_SCREEN(("2PC: TID=%d Prepare message sent\n", gateway->transaction_number));
 		gateway->two_pc_state = READY;
 
 		return_value = send_message_to_replicas(gateway, buffer);
@@ -505,7 +500,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 		}
 
-		LOG_SCREEN(("2PC: Moving to waiting state\n"));
+		LOG_SCREEN(("2PC: TID=%d Moving to waiting state\n", gateway->transaction_number));
 		gateway->two_pc_state = WAIT;
 		return E_SUCCESS;
 	}
@@ -522,7 +517,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 		{
 			return E_SUCCESS;
 		}
-		LOG_SCREEN(("2PC: All votes from participant received\n"));
+		LOG_SCREEN(("2PC: TID=%d All votes from participant received\n", gateway->transaction_number));
 		if(gateway->vote == 1)
 		{
 			/* global commit */
@@ -533,9 +528,10 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 			}
 			gateway->two_pc_state = COMMIT;
-			LOG_SCREEN(("2PC: Global commit sent\n"));
+			LOG_SCREEN(("2PC: TID=%d Global commit sent\n", gateway->transaction_number));
 
-			return_value = send_msg_to_backend(back_end_sock_fd, gateway->message);
+			sprintf(add_number_buff, "TID:%d----%s", gateway->transaction_number, gateway->message);
+			return_value = send_msg_to_backend(back_end_sock_fd, add_number_buff);
 			if(E_SUCCESS != return_value)
 			{
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
@@ -551,7 +547,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 				LOG_ERROR(("ERROR: Unable to send message to replicas\n"));
 			}
 
-			LOG_SCREEN(("2PC: Global abort sent\n"));
+			LOG_SCREEN(("2PC: TID=%d Global abort sent\n", gateway->transaction_number));
 			gateway->two_pc_state = ABORT;
 
 		}
@@ -561,7 +557,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 	{
 		if(receive_ack_from_replica(gateway, client) == 0)
 		{
-			LOG_ERROR(("2PC: Acknowledge not received from all replicas\n"));
+			LOG_ERROR(("2PC: TID=%d Acknowledge not received from all replicas\n", gateway->transaction_number));
 			return (E_SUCCESS);
 		}
 		gateway->ack_count++;
@@ -570,7 +566,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 			return E_SUCCESS;
 		}
 
-		LOG_SCREEN(("2PC: Transaction complete\n"));
+		LOG_SCREEN(("2PC: TID=%d Transaction complete\n", gateway->transaction_number));
 		gateway->two_pc_state = NOTHING;
 	}
 	return (E_SUCCESS);
@@ -880,9 +876,10 @@ void* primary_gateway_callback(void *context)
 	int count;
 	char buffer[100] = {'\0'};
 
+	char add_number_buff[250] = {'\0'};
+
 	if(gateway->two_pc_state == NOTHING)
 	{
-		LOG_SCREEN(("DEBUG: Currently in INIT state\n"));
 		gateway->two_pc_state = INIT;
 		gateway->transaction_number++;
 
@@ -895,7 +892,7 @@ void* primary_gateway_callback(void *context)
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
 			gateway->switched = 3;
-			LOG_ERROR(("ERROR: Primary gateway crash detected...\n"));
+			LOG_ERROR(("INFO: Primary gateway crash detected...\n"));
 			remove_socket(gateway->network_thread, gateway->primary_gateway_socket_fd);
 		}
 		//exit(0);
@@ -921,10 +918,10 @@ void* primary_gateway_callback(void *context)
 	{
 		if(strcmp(tokens[0], "Prepare") == 0)
 		{
-			LOG_SCREEN(("DEBUG: Prepare message received\n"));
+			LOG_SCREEN(("2PC: TID=%d Prepare message received\n", gateway->transaction_number));
 			gateway->two_pc_state = READY;
 			str_copy(&gateway->message, tokens[2]);
-			LOG_SCREEN(("DEBUG: Commit_vote_sent\n"));
+			LOG_SCREEN(("2PC: TID=%d Commit_vote_sent\n", gateway->transaction_number));
 			sprintf(buffer, "Vote_Commit:%d:Empty", atoi(tokens[1]));
 			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, buffer);
 			if(E_SUCCESS != return_value)
@@ -936,10 +933,10 @@ void* primary_gateway_callback(void *context)
 		}
 		else if(strcmp(tokens[0], "Commit") == 0)
 		{
-			LOG_ERROR(("ERROR: Commit Received and in INIT state\n"));
-			LOG_SCREEN(("DEBUG: Abort_vote_sent\n"));
+			LOG_ERROR(("2PC: TID=%d Commit Received and in INIT state\n", gateway->transaction_number));
+			LOG_SCREEN(("2PC: TID=%d Abort_vote_sent\n", gateway->transaction_number));
 			sprintf(buffer, "Abort_Commit:%d:Empty", atoi(tokens[1]));
-			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, buffer);
+			return_value = send_msg_to_backend(gateway->primary_gateway_socket_fd, add_number_buff);
 			if(E_SUCCESS != return_value)
 			{
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
@@ -961,14 +958,15 @@ void* primary_gateway_callback(void *context)
 		}
 		else if(strcmp(tokens[0], "Commit") == 0)
 		{
-			LOG_SCREEN(("DEBUG: Global commit message received\n"));
+			LOG_SCREEN(("2PC: TID=%d Global commit message received\n", gateway->transaction_number));
 			gateway->two_pc_state = COMMIT;
 			/* send to persistent storage */
 			for(int index=0; index<gateway->client_count; index++)
 			{
 				if(gateway->clients[index]->type == BACK_TIER_GATEWAY)
 				{
-					return_value = send_msg_to_backend(gateway->clients[index]->comm_socket_fd, gateway->message);
+					sprintf(add_number_buff, "TID:%d----%s",gateway->transaction_number, gateway->message);
+					return_value = send_msg_to_backend(gateway->clients[index]->comm_socket_fd, add_number_buff);
 					if(E_SUCCESS != return_value)
 					{
 						LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
@@ -982,13 +980,13 @@ void* primary_gateway_callback(void *context)
 			{
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 			}
-			LOG_SCREEN(("DEBUG: Acknowledge for global commit sent\n"));
+			LOG_SCREEN(("2PC: TID=%d Acknowledge for global commit sent\n", gateway->transaction_number));
 
 			gateway->two_pc_state = NOTHING;
 		}
 		else if(strcmp(tokens[0], "Abort") == 0)
 		{
-			LOG_SCREEN(("DEBUG: Global abort message received\n"));
+			LOG_SCREEN(("2PC: TID=%d Global abort message received\n", gateway->transaction_number));
 			gateway->two_pc_state = ABORT;
 
 			sprintf(buffer, "Ack:%d:Empty", atoi(tokens[1]));
@@ -997,7 +995,7 @@ void* primary_gateway_callback(void *context)
 			{
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 			}
-			LOG_SCREEN(("DEBUG: Acknowledge for global commit sent\n"));
+			LOG_SCREEN(("2PC: TID=%d Acknowledge for global commit sent\n", gateway->transaction_number));
 
 			gateway->two_pc_state = NOTHING;
 		}
@@ -1060,8 +1058,8 @@ void* read_callback(void *context)
 	message *msg = NULL;
 	message_context *msg_context = NULL;
 	//message snd_msg;
-	int index;
-	int flag_found = 0;
+	//int index;
+	//int flag_found = 0;
 	int msg_logical_clock[CLOCK_SIZE];
 	int buffer_message;
 	int signal_message_handler;
@@ -1148,8 +1146,6 @@ void* read_callback(void *context)
 		return NULL;
 	}
 
-	LOG_SCREEN(("INFO: Processing message of %s %s\n", device_string[client->type], message_string[msg->type]));
-
 	if(gateway->primary_flag == 1 || msg->type == REGISTER)
 	{
 
@@ -1181,10 +1177,6 @@ void* read_callback(void *context)
 
 		if(check_devlivery(gateway->logical_clock, msg_logical_clock, msg_context->client->type) )
 		{
-			if(msg->type == REGISTER)
-			{
-				printf("Directly adjusting clock\n");
-			}
 			/* correct order message */
 			/* adjust clock */
 			LOG_INFO(("------------------------------------\n"));
