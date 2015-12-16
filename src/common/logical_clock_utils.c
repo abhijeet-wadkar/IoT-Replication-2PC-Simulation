@@ -17,7 +17,7 @@ static int max(int a, int b)
 
 int check_devlivery(int local_clock[CLOCK_SIZE], int msg_clock[CLOCK_SIZE], int client_no)
 {
-	int index, flag = 0;
+	int index;
 
 	for(index=0; index<CLOCK_SIZE; index++)
 	{

@@ -892,7 +892,7 @@ void* primary_gateway_callback(void *context)
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
 			gateway->switched = 3;
-			LOG_ERROR(("INFO: Primary gateway crash detected...\n"));
+			LOG_SCREEN(("INFO: Primary gateway crash detected...\n"));
 			remove_socket(gateway->network_thread, gateway->primary_gateway_socket_fd);
 		}
 		//exit(0);
@@ -1170,7 +1170,6 @@ void* read_callback(void *context)
 		{
 			adjust_clock(gateway->logical_clock, msg_logical_clock);
 			gateway->switched--;
-			printf("----------->switching%d\n", gateway->switched);
 			pthread_mutex_unlock(&gateway->mutex_lock);
 			return NULL;
 		}
