@@ -69,6 +69,8 @@ typedef struct gateway_context
 
 	queue *transaction_queue;
 
+	int switched;
+
 }gateway_context;
 
 int create_gateway(gateway_handle*, gateway_create_params*);

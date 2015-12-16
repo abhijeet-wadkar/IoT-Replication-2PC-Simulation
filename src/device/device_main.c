@@ -14,7 +14,7 @@
 #include "device.h"
 #include "logger.h"
 #include "string_helper_functions.h"
-#include "error_icodes.h"
+#include "error_codes.h"
 
 void signal_handler(int signum)
 {
@@ -73,7 +73,7 @@ int main(int argc, char*argv[])
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		return (0);
 	}
-	str_tokenize(line, ":\n\r", tokens, &count);
+	str_tokenize(line, ",:\n\r", tokens, &count);
 	if(count<2)
 	{
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
@@ -94,22 +94,22 @@ int main(int argc, char*argv[])
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		return (0);
 	}
-	str_tokenize(line, ":\r\n", tokens, &count);
-	if (count < 4)
+	str_tokenize(line, ",:\r\n", tokens, &count);
+	if (count < 3)
 	{
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		fclose(conf_file_pointer);
 		return (0);
 	}
-	if(strcmp("device", tokens[0])!=0)
+	/*if(strcmp("device", tokens[0])!=0)
 	{
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		fclose(conf_file_pointer);
 		return (0);
-	}
+	}*/
 	str_copy(&device_device.device_ip_address, tokens[1]);
 	str_copy(&device_device.device_port_no, tokens[2]);
-	str_copy(&device_device.device_area_id, tokens[3]);
+	str_copy(&device_device.device_area_id, "1");
 
 	LOG_DEBUG(("DEBUG: ip_address: %s\n", device_device.device_ip_address));
 	LOG_DEBUG(("DEBUG: port_no: %s\n", device_device.device_port_no));

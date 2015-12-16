@@ -72,7 +72,7 @@ int main(int argc, char*argv[])
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		return (0);
 	}
-	str_tokenize(line, ":\n\r", tokens, &count);
+	str_tokenize(line, ",:\n\r", tokens, &count);
 	if(count<2)
 	{
 		LOG_ERROR(("Wrong configuration file\n"));
@@ -94,17 +94,10 @@ int main(int argc, char*argv[])
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		return (0);
 	}
-	str_tokenize(line, ":\n\r", tokens, &count);
+	str_tokenize(line, ",:\n\r", tokens, &count);
 	if(count<3)
 	{
 		LOG_ERROR(("Wrong configuration file\n"));
-		fclose(conf_file_pointer);
-		return (0);
-	}
-
-	if(strcmp(tokens[0], "PrimaryGateway")!=0)
-	{
-		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		fclose(conf_file_pointer);
 		return (0);
 	}

@@ -1,0 +1,4 @@
+0,10,True
+11,25,False
+26,35,True
+36,50,False

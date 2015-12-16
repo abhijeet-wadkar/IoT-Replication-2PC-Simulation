@@ -25,7 +25,6 @@ void signal_handler(int signum)
                 LOG_INFO(("in signal hanlder handling SIGPIPE"));
         }
 }
-
 int main(int argc, char*argv[])
 {
 	char *conf_file_name = NULL;
@@ -65,43 +64,15 @@ int main(int argc, char*argv[])
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		return (0);
 	}
-	str_tokenize(line, ":\n\r", tokens, &count);
-	if(count<3)
-	{
-		LOG_ERROR(("ERROR: Wrong configuration file\n"));
-		fclose(conf_file_pointer);
-		return (0);
-	}
-	if(strcmp(tokens[0], "PrimaryGateway")!=0)
-	{
-		LOG_ERROR(("ERROR: Wrong configuration file\n"));
-		fclose(conf_file_pointer);
-		return (0);
-	}
-
-	str_copy(&sensor_device.primary_gateway_ip_address, tokens[1]);
-	str_copy(&sensor_device.primary_gateway_port_no, tokens[2]);
-
-	LOG_DEBUG(("DEBUG: Gateway IP Address: %s\n", sensor_device.gateway_ip_address));
-	LOG_DEBUG(("DEBUG: Gateway Port No: %s\n", sensor_device.gateway_port_no));
-
-	/* Read line */
-	if(fgets(line, LINE_MAX, conf_file_pointer) == NULL)
-	{
-		LOG_DEBUG(("DEBUG: Cleanup and return\n"));
-		fclose(conf_file_pointer);
-		LOG_ERROR(("ERROR: Wrong configuration file\n"));
-		return (0);
-	}
-	str_tokenize(line, ":\n\r", tokens, &count);
-	if(count<3)
+	str_tokenize(line, ",:\n\r", tokens, &count);
+	if(count<2)
 	{
 		LOG_ERROR(("Wrong configuration file\n"));
 		fclose(conf_file_pointer);
 		return (0);
 	}
-	str_copy(&sensor_device.gateway_ip_address, tokens[1]);
-	str_copy(&sensor_device.gateway_port_no, tokens[2]);
+	str_copy(&sensor_device.gateway_ip_address, tokens[0]);
+	str_copy(&sensor_device.gateway_port_no, tokens[1]);
 
 	/* Read line */
 	if (fgets(line, LINE_MAX, conf_file_pointer) == NULL)
@@ -111,22 +82,22 @@ int main(int argc, char*argv[])
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		return (0);
 	}
-	str_tokenize(line, ":\r\n", tokens, &count);
-	if (count < 4)
+	str_tokenize(line, ",:\r\n", tokens, &count);
+	if (count < 3)
 	{
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		fclose(conf_file_pointer);
 		return (0);
 	}
-	if(strcmp("sensor", tokens[0])!=0)
+	/*if(strcmp("sensor", tokens[0])!=0)
 	{
 		LOG_ERROR(("ERROR: Wrong configuration file\n"));
 		fclose(conf_file_pointer);
 		return (0);
-	}
+	}*/
 	str_copy(&sensor_device.sensor_ip_address, tokens[1]);
 	str_copy(&sensor_device.sensor_port_no, tokens[2]);
-	str_copy(&sensor_device.sensor_area_id, tokens[3]);
+	str_copy(&sensor_device.sensor_area_id, "1");
 
 	sensor_device.sensor_value_file_name = argv[2];
 
@@ -149,7 +120,7 @@ int main(int argc, char*argv[])
 
 	char choice;
 
-	LOG_SCREEN(("INFO: Door Sensor started successfully\n"));
+	LOG_SCREEN(("INFO: Motion Sensor started successfully\n"));
 	LOG_SCREEN(("INFO: Output is Redirected to file: %s\n", argv[3]));
 
 	printf("Press enter to exit\n");

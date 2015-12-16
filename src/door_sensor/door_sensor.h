@@ -22,9 +22,7 @@ typedef struct sensor_create_params
 	char *sensor_port_no;
 	char *sensor_area_id;
 	char *gateway_ip_address;
-	char *primary_gateway_ip_address;
 	char *gateway_port_no;
-	char *primary_gateway_port_no;
 	char *sensor_value_file_name;
 }sensor_create_params;
 

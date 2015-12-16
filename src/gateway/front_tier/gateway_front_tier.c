@@ -30,6 +30,14 @@ char* device_string[] = {
 		"back_tier_gateway",
 		"unknown"};
 
+char* message_string[] = {
+		"switch",
+		"current_state",
+		"current_value",
+		"set_interval",
+		"register"
+};
+
 char* state_string[] = {
 		"off",
 		"on"
@@ -94,16 +102,53 @@ void* start_transaction(void *context)
 {
 	int return_value;
 	transaction_context *tc = (transaction_context*)context;
+	int flag = 0;
+	int back_end_sock_fd;
 
-	pthread_mutex_lock(&tc->gateway->transaction_lock);
-	while(tc->gateway->two_pc_state != NOTHING);
-	return_value = two_phase_commit(tc->gateway, tc->client, tc->buffer);
-	pthread_mutex_unlock(&tc->gateway->transaction_lock);
+	LOG_SCREEN(("start_transaction++\n"));
 
-	if(E_SUCCESS != return_value)
+	for(int index=0; index<tc->gateway->client_count; index++)
 	{
-		LOG_ERROR(("ERROR: TwoPhaseCommit Failed\n"));
+		if(tc->gateway->clients[index]->type == REPLICA_GATEWAY
+				&& tc->gateway->clients[index]->comm_socket_fd != -1)
+		{
+			flag = 1;
+			LOG_SCREEN(("Replica present\n"));
+		}
+		if(tc->gateway->clients[index]->type == BACK_TIER_GATEWAY)
+		{
+			back_end_sock_fd = tc->gateway->clients[index]->comm_socket_fd;
+		}
 	}
+
+	if(flag == 1)
+	{
+		pthread_mutex_lock(&tc->gateway->transaction_lock);
+		LOG_SCREEN(("INFO: starting transaction\n"));
+		while(tc->gateway->two_pc_state != NOTHING);
+
+		return_value = two_phase_commit(tc->gateway, tc->client, tc->buffer);
+
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: TwoPhaseCommit Failed\n"));
+		}
+
+		pthread_mutex_unlock(&tc->gateway->transaction_lock);
+	}
+	else
+	{
+		LOG_SCREEN(("INFO: No Replica Found: Committing to local database\n"));
+		return_value = send_msg_to_backend(back_end_sock_fd, tc->buffer);
+		if(E_SUCCESS != return_value)
+		{
+			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
+		}
+	}
+
+	LOG_SCREEN(("start_transaction--\n"));
+
+	pthread_exit(NULL);
 
 	return NULL;
 }
@@ -167,25 +212,26 @@ void* message_handler(void *context)
 				LOG_SCREEN(("All Devices registered successfully\n"));
 				for(int index=0; index < gateway->client_count; index++)
 				{
-					if(gateway->clients[index]->type != BACK_TIER_GATEWAY
-							&& gateway->clients[index]->type != SECURITY_DEVICE
-							&& gateway->clients[index]->type != REPLICA_GATEWAY
-							&&gateway->clients[index]->type != FORWARD_GATEWAY)
+					if(gateway->clients[index]->type == MOTION_SENSOR
+							|| gateway->clients[index]->type == KEY_CHAIN_SENSOR
+							|| gateway->clients[index]->type == DOOR_SENSOR)
 					{
 						for(int index1=0; index1<gateway->client_count; index1++)
 						{
 							if(0 != strcmp(gateway->clients[index]->client_port_number, gateway->clients[index1]->client_port_number)
-									&& gateway->clients[index1]->type != BACK_TIER_GATEWAY
-									&& gateway->clients[index1]->type != SECURITY_DEVICE
-									&& gateway->clients[index1]->type != REPLICA_GATEWAY
-									&& gateway->clients[index1]->type != FORWARD_GATEWAY)
+									&&
+									(gateway->clients[index1]->type == MOTION_SENSOR
+											|| gateway->clients[index1]->type == KEY_CHAIN_SENSOR
+											|| gateway->clients[index1]->type == DOOR_SENSOR
+											|| gateway->clients[index1]->type == REPLICA_GATEWAY))
 							{
 								message msg;
 								msg.type = REGISTER;
 								msg.u.s.type = gateway->clients[index1]->type;
 								msg.u.s.ip_address = gateway->clients[index1]->client_ip_address;
 								msg.u.s.port_no = gateway->clients[index1]->client_port_number;
-								load_balancing_factor++;
+								if(gateway->clients[index1]->type != REPLICA_GATEWAY)
+									load_balancing_factor++;
 								*(gateway->clients[index1]->area_id) = load_balancing_factor; 
 								msg.u.s.area_id = gateway->clients[index1]->area_id;
 								return_value = write_message(gateway->clients[index]->comm_socket_fd, gateway->logical_clock, &msg);
@@ -201,9 +247,12 @@ void* message_handler(void *context)
 			break;
 		case CURRENT_VALUE:
 			LOG_DEBUG(("Current value message received\n"));
+			printf("Current value message received\n");
 			LOG_DEBUG(("Value: %d\n", msg->u.value));
 
 			client->value = msg->u.value;
+
+			LOG_SCREEN(("Value: %d\n", msg->u.value));
 
 			if(client->type == MOTION_SENSOR)
 			{
@@ -269,7 +318,7 @@ void* message_handler(void *context)
 					}
 				}
 			}
-			print_state(client->gateway);
+			//print_state(client->gateway);
 
 
 			/*for(int index=0; index<gateway->client_count; index++)
@@ -285,19 +334,12 @@ void* message_handler(void *context)
 			}*/
 
 			/* starting the 2Phase commit protocol */
-			for(int index=0; index<gateway->client_count; index++)
-			{
-				if(gateway->clients[index]->type == REPLICA_GATEWAY)
-				{
-					pthread_t thread;
-					transaction_context *tc = (transaction_context*)malloc(sizeof(transaction_context));
-					tc->gateway = gateway;
-					tc->client = client;
-					str_copy(&tc->buffer, buffer);
-					pthread_create(&thread, NULL, start_transaction, (void*)tc);
-				}
-			}
-
+			pthread_t thread;
+			transaction_context *tc = (transaction_context*)malloc(sizeof(transaction_context));
+			tc->gateway = gateway;
+			tc->client = client;
+			str_copy(&tc->buffer, buffer);
+			pthread_create(&thread, NULL, start_transaction, (void*)tc);
 			break;
 		case CURRENT_STATE:
 			LOG_DEBUG(("DEBUG: Current state message is received\n"));
@@ -436,8 +478,16 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 
 	if(gateway->two_pc_state == NOTHING)
 	{
+
+		if(strcmp(commit_message, "") == 0)
+		{
+			LOG_ERROR(("Called from wrong place\n"));
+			return E_INVALID_MESSAGE;
+		}
+
+		LOG_SCREEN(("2PC: Transaction Started\n"));
 		gateway->two_pc_state = INIT;
-		LOG_SCREEN(("DEBUG: Currently in INIT state\n"));
+		LOG_SCREEN(("2PC: Currently in INIT state\n"));
 		gateway->transaction_number++;
 
 		gateway->vote = 1;
@@ -446,7 +496,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 		str_copy(&gateway->message, commit_message);
 
 		sprintf(buffer, "Prepare:%d:%s", gateway->transaction_number, commit_message);
-		LOG_SCREEN(("DEBUG: Prepare message sent\n"));
+		LOG_SCREEN(("2PC: Prepare message sent\n"));
 		gateway->two_pc_state = READY;
 
 		return_value = send_message_to_replicas(gateway, buffer);
@@ -455,7 +505,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 			LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 		}
 
-		LOG_SCREEN(("INFO: Moving to waiting state\n"));
+		LOG_SCREEN(("2PC: Moving to waiting state\n"));
 		gateway->two_pc_state = WAIT;
 		return E_SUCCESS;
 	}
@@ -472,6 +522,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 		{
 			return E_SUCCESS;
 		}
+		LOG_SCREEN(("2PC: All votes from participant received\n"));
 		if(gateway->vote == 1)
 		{
 			/* global commit */
@@ -482,7 +533,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 				LOG_ERROR(("ERROR: Unable to send message to back-end\n"));
 			}
 			gateway->two_pc_state = COMMIT;
-			LOG_SCREEN(("INFO: Global commit sent\n"));
+			LOG_SCREEN(("2PC: Global commit sent\n"));
 
 			return_value = send_msg_to_backend(back_end_sock_fd, gateway->message);
 			if(E_SUCCESS != return_value)
@@ -500,7 +551,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 				LOG_ERROR(("ERROR: Unable to send message to replicas\n"));
 			}
 
-			LOG_SCREEN(("INFO: Global abort sent\n"));
+			LOG_SCREEN(("2PC: Global abort sent\n"));
 			gateway->two_pc_state = ABORT;
 
 		}
@@ -510,7 +561,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 	{
 		if(receive_ack_from_replica(gateway, client) == 0)
 		{
-			LOG_ERROR(("ERROR: Acknowledge not received from all replicas\n"));
+			LOG_ERROR(("2PC: Acknowledge not received from all replicas\n"));
 			return (E_SUCCESS);
 		}
 		gateway->ack_count++;
@@ -519,7 +570,7 @@ int two_phase_commit(gateway_context *gateway, gateway_client *client, char* com
 			return E_SUCCESS;
 		}
 
-		LOG_ERROR(("Transaction complete\n"));
+		LOG_SCREEN(("2PC: Transaction complete\n"));
 		gateway->two_pc_state = NOTHING;
 	}
 	return (E_SUCCESS);
@@ -660,6 +711,7 @@ int create_gateway(gateway_handle* handle, gateway_create_params *params)
 	gateway->logical_clock[1] = 0;
 	gateway->logical_clock[2] = 0;
 	gateway->logical_clock[3] = 0;
+	gateway->switched = 0;
 
 	gateway->primary_flag = 0;
 	gateway->two_pc_state = NOTHING;
@@ -814,6 +866,8 @@ void delete_gateway(gateway_handle handle)
 
 void* forwarding_read_callback(void* context)
 {
+	gateway_context *gateway = (gateway_context*)context;
+	gateway->primary_flag = 1;
 	return NULL;
 }
 
@@ -840,7 +894,9 @@ void* primary_gateway_callback(void *context)
 	{
 		if(return_value == E_SOCKET_CONNECTION_CLOSED)
 		{
+			gateway->switched = 3;
 			LOG_ERROR(("ERROR: Primary gateway crash detected...\n"));
+			remove_socket(gateway->network_thread, gateway->primary_gateway_socket_fd);
 		}
 		//exit(0);
 		return (NULL);
@@ -1012,8 +1068,9 @@ void* read_callback(void *context)
 
 	if(client->type == REPLICA_GATEWAY)
 	{
-		two_phase_commit(gateway, client, "");
-		return (NULL);
+		int return_value = two_phase_commit(gateway, client, "");
+		if(return_value != E_INVALID_MESSAGE)
+			return (NULL);
 	}
 
 	msg_context = (message_context*)malloc(sizeof(message_context));
@@ -1032,6 +1089,8 @@ void* read_callback(void *context)
 	msg_context->client = client;
 	msg_context->msg = msg;
 
+	if(client->comm_socket_fd == -1)
+		return NULL;
 	return_value = read_message(client->comm_socket_fd, msg_logical_clock, msg);
 	if(return_value != E_SUCCESS)
 	{
@@ -1041,9 +1100,22 @@ void* read_callback(void *context)
 			//		client->client_ip_address,
 			//		client->client_port_number,
 			//		client->area_id));
+			client->comm_socket_fd = -1;
 			remove_socket(client->gateway->network_thread, client->comm_socket_fd);
 			client->connection_state = 0;
-			//LOG_ERROR(("ERROR: Connection closed for client\n"));
+			if(client->type == REPLICA_GATEWAY)
+			{
+				//pthread_mutex_lock(&client->gateway->transaction_lock);
+				LOG_SCREEN(("Secondary crash detected\n"));
+				if(gateway->two_pc_state != NOTHING)
+				{
+					LOG_SCREEN(("INFO: Last transaction canceled\n"));
+				}
+				gateway->two_pc_state = NOTHING;
+				//pthread_mutex_unlock(&client->gateway->transaction_lock);
+			}
+			LOG_ERROR(("ERROR: Connection closed for client\n"));
+			/*
 			index = 0;
 			flag_found = 0;
 			for(index=0; index<gateway->client_count; index++)
@@ -1070,10 +1142,13 @@ void* read_callback(void *context)
 				free(client->area_id);
 			free(client);
 			return NULL;
+			*/
 		}
-		//LOG_ERROR(("ERROR: Error in read message, error: %d\n", return_value));
+		LOG_ERROR(("ERROR: Error in read message, error: %d\n", return_value));
 		return NULL;
 	}
+
+	LOG_SCREEN(("INFO: Processing message of %s %s\n", device_string[client->type], message_string[msg->type]));
 
 	if(gateway->primary_flag == 1 || msg->type == REGISTER)
 	{
@@ -1094,8 +1169,22 @@ void* read_callback(void *context)
 		buffer_message = 0;
 		signal_message_handler = 0;
 		//adjust_clock(gateway->logical_clock, msg_logical_clock);
-		if(check_devlivery(gateway->logical_clock, msg_logical_clock, msg_context->client->type))
+
+		if(gateway->switched !=0)
 		{
+			adjust_clock(gateway->logical_clock, msg_logical_clock);
+			gateway->switched--;
+			printf("----------->switching%d\n", gateway->switched);
+			pthread_mutex_unlock(&gateway->mutex_lock);
+			return NULL;
+		}
+
+		if(check_devlivery(gateway->logical_clock, msg_logical_clock, msg_context->client->type) )
+		{
+			if(msg->type == REGISTER)
+			{
+				printf("Directly adjusting clock\n");
+			}
 			/* correct order message */
 			/* adjust clock */
 			LOG_INFO(("------------------------------------\n"));
@@ -1214,10 +1303,14 @@ void* read_callback(void *context)
 	else
 	{
 		//forward the message
-		return_value = write_message(gateway->forwarding_socket_fd, msg_logical_clock, msg);
-		if(return_value != E_SUCCESS)
+		adjust_clock(gateway->logical_clock, msg_logical_clock);
+		if(strcmp(msg->u.s.area_id, "2") == 0)
 		{
-			LOG_ERROR(("ERROR: Unable to forward the message to primary gateway\n"));
+			return_value = write_message(gateway->forwarding_socket_fd, msg_logical_clock, msg);
+			if(return_value != E_SUCCESS)
+			{
+				LOG_ERROR(("ERROR: Unable to forward the message to primary gateway\n"));
+			}
 		}
 	}
 

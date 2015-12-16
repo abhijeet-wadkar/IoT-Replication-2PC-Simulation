@@ -246,13 +246,14 @@ int read_message(int socket_fd, int logical_clock[CLOCK_SIZE], message *msg)
 	}
 	else if(strcmp(tokens[1], "currValue")==0)
 	{
+		LOG_DEBUG(("Value: %s\n", tokens[3]));
 		msg->type = CURRENT_VALUE;
 		str_tokenize(tokens[3], "-", register_tokens, &count);
 		if(count !=5)
 		{
 			return (E_INVALID_MESSAGE);
 		}
-		msg->u.s.type = atoi(register_tokens[1]);
+		msg->u.value = atoi(register_tokens[0]);
 		msg->u.s.type = get_device_type(register_tokens[1]);
 		str_copy(&msg->u.s.ip_address, register_tokens[2]);
 		str_copy(&msg->u.s.port_no, register_tokens[3]);
@@ -432,7 +433,7 @@ int write_message(int socket_fd, int logical_clock[CLOCK_SIZE], message *msg)
 		return (E_SOCKET_CONNCTION_ERORR);
 	}
 
-	LOG(("Message sent: %s\n", buffer));
+	LOG_DEBUG(("Message sent: %s\n", buffer));
 	send_count = send(socket_fd, buffer, strlen(buffer), 0);
 	if(send_count < 0)
 	{
