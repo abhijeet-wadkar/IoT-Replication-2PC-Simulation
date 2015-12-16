@@ -1104,7 +1104,7 @@ void* read_callback(void *context)
 			if(client->type == REPLICA_GATEWAY)
 			{
 				//pthread_mutex_lock(&client->gateway->transaction_lock);
-				LOG_SCREEN(("Secondary crash detected\n"));
+				LOG_SCREEN(("INFO: Secondary crash detected\n"));
 				if(gateway->two_pc_state != NOTHING)
 				{
 					LOG_SCREEN(("INFO: Last transaction canceled\n"));
@@ -1179,33 +1179,20 @@ void* read_callback(void *context)
 		{
 			/* correct order message */
 			/* adjust clock */
-			LOG_INFO(("------------------------------------\n"));
-			LOG_INFO(("INFO: Message delivered\n"));
-			LOG_INFO(("INFO: Process Clock : "));
-			print_logical_clock(gateway->logical_clock);
-			LOG_INFO((", timestamp: %lu, From %s:%s\n",
-					msg->timestamp,
-					client->client_ip_address,
-					client->client_port_number));
 			add_queue(&gateway->msg_queue, msg_context);
 			adjust_clock(gateway->logical_clock, msg_logical_clock);
 			signal_message_handler = 1;
 
-			LOG_INFO(("INFO: Message timest: "));
-			print_logical_clock(msg_logical_clock);
-			LOG_INFO((", timestamp: %lu, From %s:%s:Process: %d\n",
-					msg->timestamp,
-					client->client_ip_address,
-					client->client_port_number,
-					msg_context->client->type));
-
-			LOG_INFO(("INFO: Process Clock : "));
-			print_logical_clock(gateway->logical_clock);
-			LOG_INFO((", timestamp: %lu, From %s:%s\n",
-					msg->timestamp,
-					client->client_ip_address,
-					client->client_port_number));
-			LOG_INFO(("------------------------------------\n"));
+			if(msg->type != REGISTER)
+			{
+				LOG_INFO(("INFO: Event Delivered: "));
+				print_logical_clock(msg_logical_clock);
+				LOG_INFO((", timestamp: %lu, From %s:%s:Process: %d\n",
+						msg->timestamp,
+						client->client_ip_address,
+						client->client_port_number,
+						msg_context->client->type));
+			}
 
 		}
 		else
@@ -1215,26 +1202,6 @@ void* read_callback(void *context)
 		}
 		if(buffer_message)
 		{
-			LOG_INFO(("---------------------------------------\n"));
-			LOG_INFO(("DEBUG: Message buffered\n"))
-			LOG_SCREEN(("DEBUG: Message buffered\n"));
-
-			LOG_INFO(("INFO: Message timest: "));
-			print_logical_clock(msg_logical_clock);
-			LOG_INFO((", timestamp: %lu, From %s:%s:Process: %d\n",
-					msg->timestamp,
-					client->client_ip_address,
-					client->client_port_number,
-					msg_context->client->type));
-
-			LOG_INFO(("INFO: Process Clock : "));
-			print_logical_clock(gateway->logical_clock);
-			LOG_INFO((", timestamp: %lu, From %s:%s\n",
-					msg->timestamp,
-					client->client_ip_address,
-					client->client_port_number));
-			LOG_INFO(("---------------------------------------\n"));
-
 			for(int index=0; index<100; index++)
 			{
 				if(gateway->buffered_messages[index] == NULL)
@@ -1253,35 +1220,19 @@ void* read_callback(void *context)
 				message_context *temp_message = (message_context*)gateway->buffered_messages[index];
 				if(check_devlivery(gateway->logical_clock, temp_message->msg->logical_clock, temp_message->client->type))
 				{
-					LOG_INFO(("-------------------------------------------\n"));
-					LOG_INFO(("INFO: Message Delivered from buffered queue\n"));
-					LOG_INFO(("INFO: Process Clock : "));
-					print_logical_clock(gateway->logical_clock);
-					LOG_INFO((", timestamp: %lu, From %s:%s\n",
-							msg->timestamp,
-							client->client_ip_address,
-							client->client_port_number));
-
 					add_queue(&gateway->msg_queue, temp_message);
 					adjust_clock(gateway->logical_clock, temp_message->msg->logical_clock);
 					gateway->buffered_messages[index] = NULL;
 					index = 0;
 					signal_message_handler = 1;
 
-					LOG_INFO(("INFO: Message timest: "));
+					LOG_INFO(("INFO: Event Delivered: "));
 					print_logical_clock(temp_message->msg->logical_clock);
 					LOG_INFO((", timestamp: %lu, From %s:%s:Process: %d\n",
 							msg->timestamp,
 							client->client_ip_address,
 							client->client_port_number,
 							msg_context->client->type));
-					LOG_INFO(("INFO: Process Clock : "));
-					print_logical_clock(gateway->logical_clock);
-					LOG_INFO((", timestamp: %lu, From %s:%s\n",
-							msg->timestamp,
-							client->client_ip_address,
-							client->client_port_number));
-					LOG_INFO(("--------------------------------\n"));
 				}
 			}
 		}

@@ -311,8 +311,6 @@ static void* read_callback(void *context)
 	case REGISTER:
 		LOG_INFO(("INFO: Register received from gateway\n"));
 
-		printf("INFO: Message device type: %d", msg.u.s.type);
-
 		if(msg.u.s.type == REPLICA_GATEWAY)
 		{
 			/* create connection to server */
